@@ -372,7 +372,7 @@ export async function fetchSchedule(patientId) {
     };
     if (freq === 'QD') {
       if (m.drug_name.toLowerCase().includes('statin')) {
-        bedtime.append ? bedtime.append(item) : bedtime.push(item);
+        bedtime.push(item);
       } else {
         morning.push(item);
       }
@@ -383,6 +383,11 @@ export async function fetchSchedule(patientId) {
       morning.push(item);
       afternoon.push(item);
       evening.push(item);
+    } else if (freq === 'QID') {
+      morning.push(item);
+      afternoon.push(item);
+      evening.push(item);
+      bedtime.push(item);
     } else {
       morning.push(item);
     }
@@ -467,6 +472,29 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
           prr: 4.8,
           chi2: 58.4,
           cases: 1240,
+        },
+      ],
+    };
+  }
+
+  if (isAmiodarone && (patientId === 'PT_STATIN_002' || patientId === 'PT_BLEED_001')) {
+    return {
+      patient_id: patientId,
+      new_drug: drugName,
+      normalized_ingredient: 'amiodarone',
+      safety_status: 'CRITICAL_CONTRAINDICATION',
+      recommendation:
+        'CONTRAINDICATED: Potent CYP3A4 / CYP2C9 inhibition dramatically elevates Simvastatin or Warfarin systemic exposure, risking acute rhabdomyolysis or severe hemorrhage.',
+      allergy_warnings: [],
+      vulnerability_warnings: ['Hepatic CYP3A4/CYP2C9 clearance bottleneck with active regimen.'],
+      flagged_interactions: [
+        {
+          combo: patientId === 'PT_STATIN_002' ? 'Simvastatin + Amiodarone + Amlodipine' : 'Warfarin + Amiodarone',
+          reaction: patientId === 'PT_STATIN_002' ? 'Rhabdomyolysis' : 'Gastrointestinal Hemorrhage',
+          tier: 'CRITICAL',
+          prr: 4.15,
+          chi2: 51.2,
+          cases: 890,
         },
       ],
     };

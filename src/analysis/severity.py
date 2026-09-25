@@ -99,9 +99,9 @@ class MedDRASeverityClassifier:
     @classmethod
     def get_color(cls, tier: SeverityTier) -> str:
         if tier == SeverityTier.CRITICAL:
-            return "#D32F2F"  # Red
+            return "#DC2626"  # Editorial Coral
         elif tier == SeverityTier.HIGH:
-            return "#E65100"  # Orange
+            return "#E8C840"  # Editorial Gold
         elif tier == SeverityTier.MODERATE:
-            return "#F57C00"  # Amber
-        return "#388E3C"      # Green
+            return "#D4A5E5"  # Editorial Lavender
+        return "#1B7A3D"      # Editorial Forest Green

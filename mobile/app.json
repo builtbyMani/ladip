@@ -1,13 +1,16 @@
 {
   "expo": {
-    "name": "LADIP Patient",
+    "name": "LADIP — Patient Safety Copilot",
     "slug": "ladip-patient",
-    "version": "1.0.0",
+    "version": "2.0.0",
+    "description": "Longitudinal Adverse Drug Interaction Predictor (LADIP) — Clinical pharmacovigilance and patient medication safety copilot powered by FDA FAERS disproportionality analysis.",
     "orientation": "portrait",
     "newArchEnabled": true,
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
       "backgroundColor": "#FFFFFF"
     },
     "assetBundlePatterns": [
@@ -18,8 +21,17 @@
     },
     "android": {
       "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#FFFFFF"
       }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "name": "LADIP — Longitudinal Adverse Drug Interaction Predictor",
+      "shortName": "LADIP",
+      "description": "Longitudinal pharmacovigilance and multi-drug interaction predictor combining FDA FAERS reporting ratios with patient medication timelines.",
+      "themeColor": "#FFFFFF",
+      "backgroundColor": "#FFFFFF"
     },
     "plugins": [
       [

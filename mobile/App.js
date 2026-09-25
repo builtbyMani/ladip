@@ -1,9 +1,17 @@
 /**
  * LADIP Patient Mobile App — Entry Point
  * Editorial Health-Tech Aesthetic (Bella-inspired, clean white surfaces, black pill CTAs, forest green accents)
+ * Includes dynamic page titles, meta descriptions, custom 404 screen, and mobile overflow protection.
  */
-import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar } from 'react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  StyleSheet,
+  View,
+  Text,
+  TouchableOpacity,
+  Platform,
+  StatusBar as RNStatusBar,
+} from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -14,18 +22,101 @@ import TodayScheduleScreen from './src/screens/TodayScheduleScreen';
 import DrugCheckerScreen from './src/screens/DrugCheckerScreen';
 import PrescriptionScannerScreen from './src/screens/PrescriptionScannerScreen';
 import PatientProfileScreen from './src/screens/PatientProfileScreen';
+import NotFoundScreen from './src/screens/NotFoundScreen';
+
+const SCREEN_META = {
+  Schedule: {
+    title: "Today's Dosing Schedule | LADIP — Patient Safety Copilot",
+    description:
+      'Daily medication regimen schedule and longitudinal multi-drug interaction shield powered by FDA FAERS.',
+  },
+  Checker: {
+    title: 'Ask Medicine / OTC Safety Check | LADIP — Patient Safety Copilot',
+    description:
+      'Prospective medication and OTC safety checker evaluating candidate drugs against your active prescriptions.',
+  },
+  Scanner: {
+    title: 'Scan Prescription / OCR | LADIP — Patient Safety Copilot',
+    description:
+      'Optical prescription and clinical chart scanner with automated multi-drug interaction detection.',
+  },
+  Profile: {
+    title: 'Electronic Health Record | LADIP — Patient Safety Copilot',
+    description:
+      'Longitudinal patient health profile, active prescriptions, allergies, and laboratory biomarkers.',
+  },
+  NotFound: {
+    title: '404 Screen Not Found | LADIP — Patient Safety Copilot',
+    description: 'The requested clinical screen could not be found in the LADIP application.',
+  },
+};
+
+const VALID_TABS = {
+  schedule: 'Schedule',
+  discovery: 'Schedule',
+  checker: 'Checker',
+  safety: 'Checker',
+  scanner: 'Scanner',
+  ocr: 'Scanner',
+  profile: 'Profile',
+  ehr: 'Profile',
+};
+
+function resolveInitialWebTab() {
+  if (Platform.OS === 'web' && typeof window !== 'undefined' && window.location) {
+    try {
+      const params = new URLSearchParams(window.location.search || '');
+      const rawParam = (params.get('tab') || params.get('workflow') || '').trim();
+      if (rawParam) {
+        return VALID_TABS[rawParam.toLowerCase()] || rawParam;
+      }
+      const pathSlug = (window.location.pathname || '/').replace(/^\/+|\/+$/g, '');
+      if (pathSlug && pathSlug !== 'index.html') {
+        return VALID_TABS[pathSlug.toLowerCase()] || pathSlug;
+      }
+    } catch (_) {}
+  }
+  return 'Schedule';
+}
 
 function MainAppContent() {
-  const [activeTab, setActiveTab] = useState('Schedule');
-  const { alerts } = usePatient();
+  const [activeTab, setActiveTab] = useState(resolveInitialWebTab);
+  const { alerts, profile } = usePatient();
 
-  const criticalCount = alerts?.filter(
-    (a) => (a.severity_tier === 'CRITICAL' || a.severity_tier === 'HIGH') && !a.is_suppressed
-  ).length || 0;
+  const criticalCount =
+    alerts?.filter(
+      (a) => (a.severity_tier === 'CRITICAL' || a.severity_tier === 'HIGH') && !a.is_suppressed
+    ).length || 0;
 
   const navigation = {
-    navigate: (tabName) => setActiveTab(tabName),
+    navigate: (tabName) => {
+      setActiveTab(tabName);
+      if (Platform.OS === 'web' && typeof window !== 'undefined' && window.history?.replaceState) {
+        try {
+          const url = new URL(window.location.href);
+          url.searchParams.set('tab', tabName);
+          window.history.replaceState({}, '', url.toString());
+        } catch (_) {}
+      }
+    },
   };
+
+  // Sync page title & meta description on Web
+  useEffect(() => {
+    if (Platform.OS === 'web' && typeof document !== 'undefined') {
+      const meta = SCREEN_META[activeTab] || SCREEN_META.NotFound;
+      const patientSuffix = profile?.name ? ` (${profile.name})` : '';
+      document.title = `${meta.title}${patientSuffix}`;
+
+      let descTag = document.querySelector('meta[name="description"]');
+      if (!descTag) {
+        descTag = document.createElement('meta');
+        descTag.setAttribute('name', 'description');
+        document.head.appendChild(descTag);
+      }
+      descTag.setAttribute('content', meta.description);
+    }
+  }, [activeTab, profile?.name]);
 
   const renderActiveScreen = () => {
     switch (activeTab) {
@@ -38,14 +129,14 @@ function MainAppContent() {
       case 'Profile':
         return <PatientProfileScreen navigation={navigation} />;
       default:
-        return <TodayScheduleScreen navigation={navigation} />;
+        return <NotFoundScreen navigation={navigation} requestedRoute={activeTab} />;
     }
   };
 
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" backgroundColor="#FFFFFF" />
-      <Header />
+      <Header navigation={navigation} activeTab={activeTab} />
       <View style={styles.screenContainer}>{renderActiveScreen()}</View>
 
       {/* Editorial Bottom Navigation Bar */}
@@ -137,11 +228,16 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 20) : 0,
+    width: '100%',
+    maxWidth: '100%',
+    overflow: 'hidden',
+    paddingTop: Platform.OS === 'android' ? RNStatusBar.currentHeight || 20 : 0,
   },
   screenContainer: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    width: '100%',
+    overflow: 'hidden',
   },
   tabBar: {
     flexDirection: 'row',
@@ -152,6 +248,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'space-around',
+    width: '100%',
   },
   tabItem: {
     alignItems: 'center',

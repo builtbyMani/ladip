@@ -1,6 +1,6 @@
 /**
  * Prospective Drug Safety Checker Screen ("Ask Medicine")
- * Editorial Health-Tech Aesthetic
+ * Editorial Health-Tech Aesthetic with Bklit.UI Charts & Motion.dev Spring Physics
  */
 import React, { useState } from 'react';
 import {
@@ -17,14 +17,18 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import { checkNewDrug } from '../api/client';
+import MotionView from '../components/MotionView';
+import { BklitBarChart } from '../components/BklitChart';
+import Footer from '../components/Footer';
 
-export default function DrugCheckerScreen() {
-  const { currentPatientId } = usePatient();
+export default function DrugCheckerScreen({ navigation }) {
+  const { currentPatientId, profile } = usePatient();
   const [drugInput, setDrugInput] = useState('');
-  const [doseInput, setDoseInput] = useState('');
+  const [doseInput, setDoseInput] = useState('400');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
 
   const quickSamples = [
     { name: 'Ibuprofen', dose: '400', label: 'Ibuprofen 400mg' },
@@ -36,20 +40,60 @@ export default function DrugCheckerScreen() {
 
   const handleCheck = async (nameToCheck = drugInput, doseToCheck = doseInput) => {
     const trimmed = (nameToCheck || '').trim();
-    if (!trimmed) return;
+    if (!trimmed || !/[a-zA-Z]/.test(trimmed)) {
+      setError('Please enter a valid medication name (letters required) before running a safety check.');
+      setSuccessMsg(null);
+      setResult(null);
+      return;
+    }
+
+    const numericDose = parseFloat(doseToCheck);
+    if (doseToCheck === '' || Number.isNaN(numericDose) || numericDose <= 0) {
+      setError('Invalid dosage amount: please enter a dose greater than 0 mg to evaluate prospective safety.');
+      setSuccessMsg(null);
+      setResult(null);
+      return;
+    }
+
     Keyboard.dismiss();
     setLoading(true);
     setError(null);
+    setSuccessMsg(null);
     setResult(null);
 
     try {
-      const data = await checkNewDrug(currentPatientId, trimmed, doseToCheck || 0);
+      const data = await checkNewDrug(currentPatientId, trimmed, numericDose);
       setResult(data);
+      const patientLabel = profile?.name || currentPatientId;
+      if (
+        data.safety_status === 'CRITICAL_CONTRAINDICATION' ||
+        data.safety_status === 'HIGH_RISK'
+      ) {
+        setError(
+          `${
+            data.safety_status === 'CRITICAL_CONTRAINDICATION'
+              ? 'CRITICAL CONTRAINDICATION'
+              : 'HIGH INTERACTION RISK'
+          }: Prescribing ${trimmed} (${numericDose} mg) to ${patientLabel} triggers high-severity pharmacovigilance warnings.`
+        );
+      } else {
+        setSuccessMsg(
+          `Prospective safety verification passed: ${trimmed} (${numericDose} mg) evaluated against ${patientLabel}'s active regimen.`
+        );
+      }
     } catch (err) {
-      setError(err.message || 'Failed to check drug safety');
+      setError(err.message || 'Failed to evaluate medication safety. Please verify network connection.');
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleClear = () => {
+    setDrugInput('');
+    setDoseInput('');
+    setResult(null);
+    setError(null);
+    setSuccessMsg(null);
   };
 
   const getStatusColor = (status) => {
@@ -66,78 +110,132 @@ export default function DrugCheckerScreen() {
   };
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
+    <ScrollView
+      style={styles.container}
+      contentContainerStyle={styles.scrollContent}
+      showsHorizontalScrollIndicator={false}
+      directionalLockEnabled={true}
+    >
       {/* Editorial Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerEyebrow}>PROSPECTIVE CHECK</Text>
-        <Text style={styles.headerTitle}>Ask Medicine / OTC Safety</Text>
-      </View>
-      <Text style={styles.headerSub}>
-        Verify any tablet, painkiller, or syrup before purchasing to detect hidden multi-drug interactions with your active regimen.
-      </Text>
+      <MotionView delay={10}>
+        <View style={styles.header}>
+          <Text style={styles.headerEyebrow}>PROSPECTIVE CHECK</Text>
+          <Text style={styles.headerTitle}>Ask Medicine / OTC Safety</Text>
+        </View>
+        <Text style={styles.headerSub}>
+          Verify any tablet, painkiller, or syrup before purchasing to detect hidden multi-drug
+          interactions with your active regimen.
+        </Text>
+      </MotionView>
 
       {/* Input Form */}
-      <View style={styles.inputCard}>
-        <Text style={styles.inputLabel}>Candidate Medication</Text>
-        <View style={styles.inputRow}>
-          <TextInput
-            style={styles.textInput}
-            placeholder="e.g. Ibuprofen, Paracetamol, Bactrim..."
-            placeholderTextColor="#94A3B8"
-            value={drugInput}
-            onChangeText={setDrugInput}
-            returnKeyType="search"
-            onSubmitEditing={() => handleCheck()}
-          />
-        </View>
+      <MotionView delay={45}>
+        <View style={styles.inputCard}>
+          <View style={styles.formFieldsRow}>
+            <View style={{ flex: 2, minWidth: 160 }}>
+              <Text style={styles.inputLabel}>Candidate Medication</Text>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="Enter medication name"
+                  placeholderTextColor="#6B6B6B"
+                  value={drugInput}
+                  onChangeText={setDrugInput}
+                  returnKeyType="search"
+                  onSubmitEditing={() => handleCheck()}
+                />
+              </View>
+            </View>
 
-        {/* Quick Test Chips */}
-        <Text style={styles.chipsLabel}>Quick Case Testing</Text>
-        <View style={styles.chipsRow}>
-          {quickSamples.map((sample, idx) => (
+            <View style={{ flex: 1, minWidth: 90 }}>
+              <Text style={styles.inputLabel}>Dose (mg)</Text>
+              <View style={styles.inputRow}>
+                <TextInput
+                  style={styles.textInput}
+                  placeholder="400"
+                  placeholderTextColor="#6B6B6B"
+                  value={doseInput}
+                  onChangeText={setDoseInput}
+                  keyboardType="numeric"
+                />
+              </View>
+            </View>
+          </View>
+
+          {/* Quick Test Chips */}
+          <Text style={styles.chipsLabel}>Clinical Test Candidates</Text>
+          <View style={styles.chipsRow}>
+            {quickSamples.map((sample, idx) => (
+              <TouchableOpacity
+                key={idx}
+                style={styles.chip}
+                onPress={() => {
+                  setDrugInput(sample.name);
+                  setDoseInput(sample.dose);
+                  handleCheck(sample.name, sample.dose);
+                }}
+              >
+                <Text style={styles.chipText}>{sample.label}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          {/* Action Buttons Row */}
+          <View style={styles.ctaRow}>
             <TouchableOpacity
-              key={idx}
-              style={styles.chip}
-              onPress={() => {
-                setDrugInput(sample.name);
-                setDoseInput(sample.dose);
-                handleCheck(sample.name, sample.dose);
-              }}
+              style={styles.checkBtn}
+              disabled={loading}
+              onPress={() => handleCheck()}
+              activeOpacity={0.85}
             >
-              <Text style={styles.chipText}>{sample.label}</Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="#FFFFFF" />
+              ) : (
+                <Text style={styles.checkBtnText}>Run Safety Check</Text>
+              )}
             </TouchableOpacity>
-          ))}
+
+            {(drugInput || result || error) && (
+              <TouchableOpacity
+                style={styles.clearBtn}
+                onPress={handleClear}
+                activeOpacity={0.8}
+              >
+                <Text style={styles.clearBtnText}>Clear</Text>
+              </TouchableOpacity>
+            )}
+          </View>
         </View>
+      </MotionView>
 
-        {/* Black Pill CTA Button */}
-        <TouchableOpacity
-          style={[styles.checkBtn, !drugInput.trim() && styles.checkBtnDisabled]}
-          disabled={!drugInput.trim() || loading}
-          onPress={() => handleCheck()}
-          activeOpacity={0.85}
-        >
-          {loading ? (
-            <ActivityIndicator size="small" color="#FFFFFF" />
-          ) : (
-            <Text style={styles.checkBtnText}>Run Safety Check</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-
-      {/* Error Message */}
+      {/* Error Message Banner */}
       {error && (
         <View style={styles.errorBox}>
+          <Ionicons name="alert-circle" size={18} color="#DC2626" />
           <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      {/* Success Message Banner */}
+      {successMsg && (
+        <View style={styles.successBox}>
+          <Ionicons name="checkmark-circle" size={18} color="#1B7A3D" />
+          <Text style={styles.successText}>{successMsg}</Text>
         </View>
       )}
 
       {/* Result Display */}
       {result && (
-        <View style={styles.resultContainer}>
+        <MotionView delay={30} style={styles.resultContainer}>
           {(() => {
             const statusInfo = getStatusColor(result.safety_status);
             return (
-              <View style={[styles.verdictCard, { borderLeftColor: statusInfo.text, borderLeftWidth: 3 }]}>
+              <View
+                style={[
+                  styles.verdictCard,
+                  { borderLeftColor: statusInfo.text, borderLeftWidth: 3 },
+                ]}
+              >
                 <Text style={[styles.verdictEyebrow, { color: statusInfo.text }]}>
                   {statusInfo.title}
                 </Text>
@@ -159,18 +257,49 @@ export default function DrugCheckerScreen() {
                   </View>
                 )}
 
-                {/* Flagged Interactions */}
+                {/* Patient Organ Vulnerability Warnings */}
+                {result.vulnerability_warnings?.length > 0 && (
+                  <View style={styles.alertDetailBlock}>
+                    <Text style={styles.alertDetailHeading}>Patient Organ Vulnerabilities</Text>
+                    {result.vulnerability_warnings.map((vw, i) => (
+                      <Text
+                        key={i}
+                        style={[
+                          styles.alertDetailText,
+                          { color: '#1A1A1A', borderLeftWidth: 2, borderLeftColor: '#E8C840', paddingLeft: 8 },
+                        ]}
+                      >
+                        {vw}
+                      </Text>
+                    ))}
+                  </View>
+                )}
+
+                {/* Flagged Interactions + Bklit.UI Chart */}
                 {result.flagged_interactions?.length > 0 && (
                   <View style={styles.alertDetailBlock}>
+                    <BklitBarChart
+                      title="Emergent Multi-Drug PRR Comparison"
+                      items={result.flagged_interactions.map((c) => ({
+                        label: `${c.reaction} (${c.combo})`,
+                        value: c.prr,
+                        cases: c.cases,
+                        tier: c.tier,
+                      }))}
+                    />
                     <Text style={styles.alertDetailHeading}>Emergent FAERS Interactions</Text>
                     {result.flagged_interactions.map((combo, i) => (
                       <View key={i} style={styles.interactionItem}>
-                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                        <View style={styles.interactionTopRow}>
                           <Text style={styles.comboName}>{combo.combo}</Text>
                           <Text style={styles.comboPRR}>{combo.prr}x PRR</Text>
                         </View>
                         <Text style={styles.comboDetail}>
-                          Adverse Risk: <Text style={{ fontWeight: '700', color: '#DC2626' }}>{combo.reaction}</Text> ({combo.cases} cases reported)
+                          Adverse Risk:{' '}
+                          <Text style={{ fontWeight: '700', color: '#DC2626' }}>
+                            {combo.reaction}
+                          </Text>{' '}
+                          ({combo.cases} cases reported)
                         </Text>
                       </View>
                     ))}
@@ -179,8 +308,10 @@ export default function DrugCheckerScreen() {
               </View>
             );
           })()}
-        </View>
+        </MotionView>
       )}
+
+      <Footer navigation={navigation} />
     </ScrollView>
   );
 }
@@ -193,6 +324,9 @@ const styles = StyleSheet.create({
   scrollContent: {
     padding: 20,
     paddingBottom: 44,
+    width: '100%',
+    maxWidth: 680,
+    alignSelf: 'center',
   },
   header: {
     marginBottom: 4,
@@ -221,7 +355,12 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E5E5E0',
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  formFieldsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 14,
   },
   inputLabel: {
     fontSize: 10,
@@ -229,16 +368,16 @@ const styles = StyleSheet.create({
     color: '#6B6B6B',
     textTransform: 'uppercase',
     letterSpacing: 0.8,
-    marginBottom: 8,
+    marginBottom: 6,
   },
   inputRow: {
     borderBottomWidth: 1,
     borderBottomColor: '#1A1A1A',
-    paddingVertical: 8,
-    marginBottom: 16,
+    paddingVertical: 6,
+    marginBottom: 14,
   },
   textInput: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#1A1A1A',
     fontWeight: '600',
   },
@@ -254,7 +393,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   chip: {
     backgroundColor: '#FFFFFF',
@@ -269,15 +408,18 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#1A1A1A',
   },
+  ctaRow: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'center',
+  },
   checkBtn: {
+    flex: 1,
     backgroundColor: '#1A1A1A',
     paddingVertical: 13,
     borderRadius: 9999,
     alignItems: 'center',
     justifyContent: 'center',
-  },
-  checkBtnDisabled: {
-    opacity: 0.4,
   },
   checkBtnText: {
     color: '#FFFFFF',
@@ -285,16 +427,52 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     letterSpacing: 0.2,
   },
+  clearBtn: {
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 13,
+    paddingHorizontal: 18,
+    borderRadius: 9999,
+  },
+  clearBtnText: {
+    color: '#1A1A1A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
   errorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     borderWidth: 1,
     borderColor: '#DC2626',
+    borderLeftWidth: 4,
     padding: 12,
-    marginBottom: 16,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
   },
   errorText: {
     color: '#DC2626',
     fontSize: 12,
     fontWeight: '600',
+    flex: 1,
+  },
+  successBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    borderWidth: 1,
+    borderColor: '#1B7A3D',
+    borderLeftWidth: 4,
+    padding: 12,
+    marginBottom: 14,
+    backgroundColor: '#FFFFFF',
+  },
+  successText: {
+    color: '#1A1A1A',
+    fontSize: 12,
+    fontWeight: '600',
+    flex: 1,
   },
   resultContainer: {
     marginTop: 4,
@@ -349,16 +527,24 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F5F5F0',
     paddingVertical: 8,
   },
+  interactionTopRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'baseline',
+    gap: 8,
+  },
   comboName: {
     fontSize: 13,
     fontWeight: '700',
     color: '#1A1A1A',
+    flex: 1,
   },
   comboPRR: {
     fontSize: 12,
-    fontFamily: 'monospace',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     fontWeight: '700',
     color: '#1A1A1A',
+    flexShrink: 0,
   },
   comboDetail: {
     fontSize: 11,

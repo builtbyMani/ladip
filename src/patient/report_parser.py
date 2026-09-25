@@ -35,23 +35,58 @@ class MedicalReportParser:
 
     def extract_text_from_pdf(self, pdf_bytes_or_path: Union[bytes, Path, str]) -> str:
         """Extract text from PDF pages using PyMuPDF."""
+        if isinstance(pdf_bytes_or_path, bytes) and not pdf_bytes_or_path:
+            raise ValueError("Uploaded PDF document is empty (0 bytes).")
         text = ""
-        if isinstance(pdf_bytes_or_path, (str, Path)):
-            doc = fitz.open(str(pdf_bytes_or_path))
-        else:
-            doc = fitz.open(stream=pdf_bytes_or_path, filetype="pdf")
+        try:
+            if isinstance(pdf_bytes_or_path, (str, Path)):
+                doc = fitz.open(str(pdf_bytes_or_path))
+            else:
+                doc = fitz.open(stream=pdf_bytes_or_path, filetype="pdf")
+        except Exception as e:
+            raise ValueError(f"Malformed or corrupted PDF document: {e}") from e
 
-        for page in doc:
-            text += page.get_text() + "\n"
-        doc.close()
+        try:
+            for page in doc:
+                text += page.get_text() + "\n"
+        finally:
+            doc.close()
         return text
+
+    @staticmethod
+    def compress_image_bytes(
+        image_bytes: bytes, max_dimension: int = 1280, quality: int = 75
+    ) -> bytes:
+        """Compress and downscale raw image bytes to reduce memory and network overhead."""
+        if not image_bytes:
+            return image_bytes
+        try:
+            with Image.open(io.BytesIO(image_bytes)) as img:
+                if img.mode in ("RGBA", "P"):
+                    img = img.convert("RGB")
+                if max(img.size) > max_dimension:
+                    img.thumbnail((max_dimension, max_dimension), Image.Resampling.LANCZOS)
+                buf = io.BytesIO()
+                img.save(buf, format="JPEG", quality=quality, optimize=True)
+                return buf.getvalue()
+        except Exception as e:
+            logger.warning(f"Image compression skipped: {e}")
+            return image_bytes
 
     def extract_text_from_image(self, image_bytes_or_path: Union[bytes, Path, str]) -> str:
         """Extract text from image using Tesseract OCR if available."""
-        if isinstance(image_bytes_or_path, (str, Path)):
-            img = Image.open(str(image_bytes_or_path))
-        else:
-            img = Image.open(io.BytesIO(image_bytes_or_path))
+        if isinstance(image_bytes_or_path, bytes) and not image_bytes_or_path:
+            raise ValueError("Uploaded image file is empty (0 bytes).")
+        try:
+            if isinstance(image_bytes_or_path, (str, Path)):
+                img = Image.open(str(image_bytes_or_path))
+                img.load()
+            else:
+                compressed = self.compress_image_bytes(image_bytes_or_path)
+                img = Image.open(io.BytesIO(compressed))
+                img.load()
+        except Exception as e:
+            raise ValueError(f"Malformed or corrupted image file: {e}") from e
 
         if pytesseract:
             try:
@@ -67,6 +102,8 @@ class MedicalReportParser:
         default_patient_id: Optional[str] = None,
     ) -> PatientProfile:
         """Main entry point: parse text, pdf, or image into a structured PatientProfile."""
+        if isinstance(content, bytes) and not content:
+            raise ValueError("Uploaded clinical document is empty (0 bytes).")
         text = ""
         if file_type == "pdf":
             text = self.extract_text_from_pdf(content)

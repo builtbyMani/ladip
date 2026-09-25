@@ -1,13 +1,20 @@
 """Longitudinal Adverse Drug Interaction Predictor (LADIP)
 Clinical Decision Support System — Editorial Health-Tech Edition
+Powered by Bklit.UI Composable Charts & Motion.dev Spring Physics
 """
 from datetime import date, timedelta
+from pathlib import Path
 import pandas as pd
-import plotly.express as px
 import streamlit as st
 
 from src.analysis.naranjo import NaranjoAlgorithm
 from src.analysis.signal_matcher import SignalMatcher
+from src.components.bklit_charts import (
+    bklit_bar_chart,
+    bklit_ring_gauge_chart,
+    bklit_timeline_chart,
+    bklit_volcano_chart,
+)
 from src.config import DB_PATH
 from src.explanations.pharmacology import PharmacologyExplainer
 from src.faers.bulk_loader import FAERSDatabase
@@ -16,21 +23,98 @@ from src.patient.memory import PatientStore
 from src.patient.report_parser import MedicalReportParser
 from src.safety.drug_checker import DrugSafetyChecker
 
+# ==============================================================================
+# WORKFLOW & PAGE METADATA REGISTRY (TITLES, META DESCRIPTIONS, ROUTES)
+# ==============================================================================
+WORKFLOW_OPTIONS = [
+    "Multi-Drug Interaction Discovery",
+    "Prospective Drug Safety Check",
+    "Patient Profile & Report Parser",
+    "FAERS Disproportionality Explorer",
+]
+
+WORKFLOW_SLUGS = {
+    "discovery": "Multi-Drug Interaction Discovery",
+    "safety": "Prospective Drug Safety Check",
+    "ehr": "Patient Profile & Report Parser",
+    "faers": "FAERS Disproportionality Explorer",
+}
+
+SLUG_BY_WORKFLOW = {v: k for k, v in WORKFLOW_SLUGS.items()}
+
+PAGE_META = {
+    "Multi-Drug Interaction Discovery": {
+        "title": "Multi-Drug Interaction Discovery | LADIP — Temporal Pharmacovigilance",
+        "description": (
+            "Detect hidden multi-drug adverse interactions using FDA FAERS 2x2 disproportionality "
+            "ratios, Naranjo causality scoring, and longitudinal alert fatigue suppression."
+        ),
+    },
+    "Prospective Drug Safety Check": {
+        "title": "Prospective Drug Safety Check | LADIP — Temporal Pharmacovigilance",
+        "description": (
+            "Pre-prescription clinical safety simulator evaluating candidate medications against "
+            "active regimens, documented drug allergies, and organ clearance vulnerabilities."
+        ),
+    },
+    "Patient Profile & Report Parser": {
+        "title": "Patient EHR & Clinical Report Parser | LADIP — Temporal Pharmacovigilance",
+        "description": (
+            "Longitudinal electronic health record inspector and automated PDF/OCR clinical "
+            "discharge summary parser for medication timeline reconstruction."
+        ),
+    },
+    "FAERS Disproportionality Explorer": {
+        "title": "FAERS Disproportionality Explorer | LADIP — Temporal Pharmacovigilance",
+        "description": (
+            "Interactive pharmacovigilance signal explorer for querying multi-drug combinations "
+            "across 2x2 contingency tables and live openFDA co-occurrence reports."
+        ),
+    },
+    "404": {
+        "title": "404 Page Not Found | LADIP — Temporal Pharmacovigilance",
+        "description": "The requested clinical workflow or patient cohort record could not be found.",
+    },
+}
+
+FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "favicon.png"
+FAVICON_SVG_DATA_URI = (
+    "data:image/svg+xml;utf8,"
+    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
+    "<rect width='64' height='64' rx='16' fill='%231A1A1A'/>"
+    "<text x='14' y='46' font-family='Georgia,serif' font-weight='900' font-size='38' fill='%23FFFFFF'>L</text>"
+    "<circle cx='46' cy='20' r='10' fill='%23D4A5E5'/>"
+    "<path d='M41.5 20.2L44.6 23.3L50.8 17.1' stroke='%231A1A1A' stroke-width='2.5' fill='none'/>"
+    "</svg>"
+)
+
+# Resolve initial page title from query params before st.set_page_config
+_qp_workflow = st.query_params.get("workflow", "")
+_initial_workflow = WORKFLOW_SLUGS.get(_qp_workflow.lower(), WORKFLOW_OPTIONS[0])
+if _qp_workflow and _qp_workflow.lower() not in WORKFLOW_SLUGS and _qp_workflow not in WORKFLOW_OPTIONS:
+    _initial_page_title = PAGE_META["404"]["title"]
+else:
+    _initial_page_title = PAGE_META.get(_initial_workflow, PAGE_META[WORKFLOW_OPTIONS[0]])["title"]
+
 st.set_page_config(
-    page_title="LADIP — Temporal Pharmacovigilance",
+    page_title=_initial_page_title,
+    page_icon=str(FAVICON_PATH) if FAVICON_PATH.exists() else ":material/verified_user:",
     layout="wide",
     initial_sidebar_state="expanded",
 )
 
 # ==============================================================================
-# EDITORIAL HEALTH-TECH DESIGN SYSTEM (BELLA-INSPIRED, ZERO AI SLOP)
+# EDITORIAL HEALTH-TECH DESIGN SYSTEM (BELLA-INSPIRED, MOBILE-OPTIMIZED, NO OVERFLOW)
 # ==============================================================================
 st.markdown(
-    """
+    f"""
+    <link rel="icon" type="image/svg+xml" href="{FAVICON_SVG_DATA_URI}" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
+    <meta name="theme-color" content="#FFFFFF" />
     <style>
     @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 
-    :root {
+    :root {{
         --surface: #FFFFFF;
         --surface-muted: #F5F5F0;
         --ink: #1A1A1A;
@@ -41,86 +125,127 @@ st.markdown(
         --accent-gold: #E8C840;
         --accent-coral: #DC2626;
         --cta-bg: #1A1A1A;
-    }
+        --chart-1: #1A1A1A;
+        --chart-2: #D4A5E5;
+        --chart-3: #DC2626;
+        --chart-4: #1B7A3D;
+        --chart-5: #E8C840;
+    }}
 
-    /* Base App & Typography */
-    html, body, .stApp, [class*="css"] {
+    /* Eliminate Horizontal Scrolling & Mobile Overflow Globally */
+    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main {{
         font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
         color: var(--ink);
         background-color: var(--surface);
-    }
+        overflow-x: hidden !important;
+        max-width: 100vw !important;
+        box-sizing: border-box !important;
+    }}
 
-    .main .block-container {
+    *, *::before, *::after {{
+        box-sizing: border-box;
+    }}
+
+    /* Remove Unused Streamlit Chrome Navigation */
+    #MainMenu,
+    .stDeployButton,
+    [data-testid="stToolbarActions"],
+    footer {{
+        display: none !important;
+    }}
+
+    .main .block-container {{
         max-width: 1180px;
-        padding-top: 2.5rem;
-        padding-bottom: 4rem;
-    }
+        width: 100%;
+        padding-top: 2rem;
+        padding-bottom: 3.5rem;
+        padding-left: 2rem;
+        padding-right: 2rem;
+        overflow-x: hidden !important;
+    }}
 
-    code, pre, .mono-val {
+    code, pre, .mono-val {{
         font-family: 'JetBrains Mono', monospace !important;
         font-size: 0.9em;
         background: var(--surface-muted) !important;
         color: var(--ink) !important;
         padding: 2px 6px;
         border-radius: 4px;
-    }
+        word-break: break-word;
+    }}
 
     /* Sidebar Editorial Styling */
-    [data-testid="stSidebar"] {
+    [data-testid="stSidebar"] {{
         background-color: var(--surface) !important;
         border-right: 1px solid var(--border) !important;
-    }
-    [data-testid="stSidebar"] .block-container {
-        padding-top: 2rem;
-    }
+    }}
+    [data-testid="stSidebar"] .block-container {{
+        padding-top: 1.75rem;
+    }}
 
     /* Remove shadows & style native containers */
-    [data-testid="stVerticalBlockBorderWrapper"] {
+    [data-testid="stVerticalBlockBorderWrapper"] {{
         border: 1px solid var(--border) !important;
         border-radius: 0px !important;
         box-shadow: none !important;
         background-color: var(--surface) !important;
-        padding: 24px !important;
-    }
+        padding: 20px !important;
+    }}
 
     /* Black Pill CTA Buttons */
-    .stButton > button, .stFormSubmitButton > button {
+    .stButton > button, .stFormSubmitButton > button {{
         background-color: var(--cta-bg) !important;
         color: #FFFFFF !important;
         border: 1px solid var(--cta-bg) !important;
         border-radius: 9999px !important;
-        padding: 0.6rem 1.6rem !important;
+        padding: 0.58rem 1.5rem !important;
         font-family: 'Plus Jakarta Sans', sans-serif !important;
         font-weight: 600 !important;
-        font-size: 0.88rem !important;
+        font-size: 0.86rem !important;
         letter-spacing: -0.01em !important;
         box-shadow: none !important;
-        transition: transform 0.15s ease, opacity 0.15s ease !important;
-    }
-    .stButton > button:hover, .stFormSubmitButton > button:hover {
+        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease !important;
+        max-width: 100%;
+        white-space: normal !important;
+    }}
+    .stButton > button:hover, .stFormSubmitButton > button:hover {{
         opacity: 0.88 !important;
         transform: translateY(-1px) !important;
-    }
-    .stButton > button:active, .stFormSubmitButton > button:active {
+    }}
+    .stButton > button:active, .stFormSubmitButton > button:active {{
         transform: scale(0.98) !important;
-    }
+    }}
 
-    /* Editorial Brand Mark */
-    .brand-row {
-        display: flex;
+    /* Clickable Editorial Brand Mark */
+    a.brand-link {{
+        text-decoration: none !important;
+        color: inherit !important;
+        display: inline-flex;
         align-items: center;
         gap: 8px;
-        margin-bottom: 18px;
-    }
-    .brand-title {
+        cursor: pointer;
+        transition: opacity 0.15s ease;
+    }}
+    a.brand-link:hover {{
+        opacity: 0.8;
+    }}
+    .brand-row {{
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 16px;
+    }}
+    .brand-title {{
         font-family: 'Playfair Display', Georgia, serif;
         font-weight: 700;
         font-size: 1.65rem;
         color: var(--ink);
         letter-spacing: -0.02em;
         line-height: 1;
-    }
-    .brand-dot {
+    }}
+    .brand-dot {{
         display: inline-flex;
         align-items: center;
         justify-content: center;
@@ -128,93 +253,92 @@ st.markdown(
         height: 18px;
         border-radius: 50%;
         background-color: var(--accent-lavender);
-        color: #FFFFFF;
+        color: #1A1A1A;
         font-size: 10px;
-        font-weight: 700;
-    }
+        font-weight: 800;
+    }}
 
     /* Star Credibility Line */
-    .credibility-line {
+    .credibility-line {{
         font-size: 0.85rem;
         color: var(--ink);
         margin-bottom: 14px;
         display: flex;
+        flex-wrap: wrap;
         align-items: center;
         gap: 6px;
-    }
-    .gold-star {
+    }}
+    .gold-star {{
         color: var(--accent-gold);
         font-size: 1rem;
-    }
+    }}
 
     /* Editorial Hero Section */
-    .editorial-hero {
+    .editorial-hero {{
         background: var(--surface);
         border-bottom: 1px solid var(--border);
-        padding: 8px 0 36px 0;
-        margin-bottom: 36px;
-    }
-    .editorial-headline {
+        padding: 4px 0 30px 0;
+        margin-bottom: 28px;
+    }}
+    .editorial-headline {{
         font-family: 'Playfair Display', Georgia, serif;
         font-weight: 700;
-        font-size: 2.85rem;
+        font-size: clamp(1.85rem, 4vw, 2.85rem);
         line-height: 1.08;
         letter-spacing: -0.025em;
         color: var(--ink);
-        margin: 0 0 18px 0;
+        margin: 0 0 16px 0;
         max-width: 680px;
-    }
-    .editorial-subtext {
+        word-break: break-word;
+    }}
+    .editorial-subtext {{
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 1rem;
+        font-size: clamp(0.92rem, 1.5vw, 1rem);
         line-height: 1.6;
         color: var(--ink-muted);
         max-width: 580px;
         margin: 0;
-    }
+    }}
 
     /* Patient Editorial Strip */
-    .patient-strip {
-        border-bottom: 1px solid var(--border);
-        padding: 0 0 28px 0;
-        margin-bottom: 32px;
-    }
-    .patient-serif-name {
+    .patient-serif-name {{
         font-family: 'Playfair Display', Georgia, serif;
         font-weight: 700;
-        font-size: 1.85rem;
+        font-size: clamp(1.45rem, 3vw, 1.85rem);
         color: var(--ink);
         letter-spacing: -0.02em;
         margin: 0 0 6px 0;
-    }
-    .patient-meta {
+        word-break: break-word;
+    }}
+    .patient-meta {{
         font-size: 0.85rem;
         color: var(--ink-muted);
         margin-bottom: 12px;
-    }
-    .section-eyebrow {
+        word-break: break-word;
+    }}
+    .section-eyebrow {{
         font-size: 0.72rem;
         font-weight: 700;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--ink-muted);
         margin-bottom: 6px;
-    }
+    }}
 
-    /* Oversized Stat Callouts (The Bella 24.1% Treatment) */
-    .stat-callout {
+    /* Oversized Stat Callouts */
+    .stat-callout {{
         padding: 8px 0;
-    }
-    .stat-number {
+    }}
+    .stat-number {{
         font-family: 'Playfair Display', Georgia, serif;
         font-weight: 900;
-        font-size: 3.4rem;
+        font-size: clamp(2.1rem, 4.2vw, 3.3rem);
         line-height: 1.0;
         letter-spacing: -0.03em;
         color: var(--ink);
         margin: 0 0 8px 0;
-    }
-    .stat-label {
+    }}
+    .stat-label {{
         font-family: 'Plus Jakarta Sans', sans-serif;
         font-size: 0.72rem;
         font-weight: 600;
@@ -222,10 +346,10 @@ st.markdown(
         letter-spacing: 0.08em;
         color: var(--ink-muted);
         margin: 0;
-    }
+    }}
 
-    /* Outlined Severity Badges (Zero Filled Slop) */
-    .badge-critical {
+    /* Outlined Severity Badges */
+    .badge-critical {{
         display: inline-block;
         background: transparent;
         color: var(--accent-coral);
@@ -236,8 +360,8 @@ st.markdown(
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-    }
-    .badge-high {
+    }}
+    .badge-high {{
         display: inline-block;
         background: transparent;
         color: #B48A00;
@@ -248,8 +372,8 @@ st.markdown(
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-    }
-    .badge-moderate {
+    }}
+    .badge-moderate {{
         display: inline-block;
         background: transparent;
         color: var(--ink-muted);
@@ -260,8 +384,8 @@ st.markdown(
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-    }
-    .badge-low {
+    }}
+    .badge-low {{
         display: inline-block;
         background: transparent;
         color: var(--accent-green);
@@ -272,40 +396,41 @@ st.markdown(
         font-size: 0.7rem;
         text-transform: uppercase;
         letter-spacing: 0.06em;
-    }
+    }}
 
     /* Editorial Alert Row */
-    .alert-row {
+    .alert-row {{
         border-top: 1px solid var(--border);
-        padding: 28px 0 20px 0;
-    }
-    .alert-headline {
+        padding: 24px 0 18px 0;
+    }}
+    .alert-headline {{
         font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 1.18rem;
+        font-size: clamp(1.02rem, 2vw, 1.18rem);
         font-weight: 700;
         color: var(--ink);
         letter-spacing: -0.01em;
         margin: 0 0 12px 0;
-    }
-    .alert-score-num {
+        word-break: break-word;
+    }}
+    .alert-score-num {{
         font-family: 'Playfair Display', Georgia, serif;
         font-weight: 900;
-        font-size: 2.25rem;
+        font-size: clamp(1.75rem, 3vw, 2.25rem);
         line-height: 1;
         letter-spacing: -0.03em;
         color: var(--ink);
-    }
-    .alert-score-caption {
+    }}
+    .alert-score-caption {{
         font-size: 0.68rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.08em;
         color: var(--ink-muted);
         margin-top: 4px;
-    }
+    }}
 
     /* Black Pill Drug Tags & Outlined Symptom Tags */
-    .drug-pill {
+    .drug-pill {{
         display: inline-block;
         background: var(--cta-bg);
         color: #FFFFFF;
@@ -315,8 +440,10 @@ st.markdown(
         font-weight: 600;
         margin-right: 6px;
         margin-bottom: 6px;
-    }
-    .symptom-pill {
+        max-width: 100%;
+        word-break: break-word;
+    }}
+    .symptom-pill {{
         display: inline-block;
         background: transparent;
         color: var(--accent-coral);
@@ -327,34 +454,120 @@ st.markdown(
         font-weight: 600;
         margin-right: 6px;
         margin-bottom: 6px;
-    }
+        max-width: 100%;
+        word-break: break-word;
+    }}
+
+    /* Editorial Inline Banners (Success & Error Messages) */
+    .editorial-banner-success {{
+        border: 1px solid var(--accent-green);
+        border-left: 4px solid var(--accent-green);
+        background: var(--surface);
+        padding: 14px 18px;
+        margin: 14px 0;
+        font-size: 0.88rem;
+        color: var(--ink);
+    }}
+    .editorial-banner-error {{
+        border: 1px solid var(--accent-coral);
+        border-left: 4px solid var(--accent-coral);
+        background: var(--surface);
+        padding: 14px 18px;
+        margin: 14px 0;
+        font-size: 0.88rem;
+        color: var(--ink);
+    }}
 
     /* Suppressed Alert Editorial Bar */
-    .suppressed-row {
+    .suppressed-row {{
         border-left: 3px solid var(--accent-green);
         padding: 10px 0 10px 16px;
         margin-bottom: 14px;
-    }
+    }}
 
     /* Evidence Metric Cell */
-    .evidence-label {
+    .evidence-label {{
         font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
         letter-spacing: 0.06em;
         color: var(--ink-muted);
         margin-bottom: 2px;
-    }
-    .evidence-val {
+    }}
+    .evidence-val {{
         font-family: 'JetBrains Mono', monospace;
         font-size: 1.05rem;
         font-weight: 500;
         color: var(--ink);
-    }
-    .evidence-sub {
+        word-break: break-word;
+    }}
+    .evidence-sub {{
         font-size: 0.76rem;
         color: var(--ink-muted);
-    }
+    }}
+
+    /* Editorial Footer */
+    .editorial-footer {{
+        border-top: 1px solid var(--border);
+        margin-top: 48px;
+        padding-top: 28px;
+        padding-bottom: 16px;
+        font-size: 0.82rem;
+        color: var(--ink-muted);
+    }}
+    .footer-grid {{
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: space-between;
+        gap: 24px;
+        margin-bottom: 20px;
+    }}
+    .footer-links {{
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+        align-items: center;
+    }}
+    .footer-links a {{
+        color: var(--ink) !important;
+        text-decoration: none !important;
+        font-weight: 600;
+        border-bottom: 1px solid transparent;
+        transition: border-color 0.15s ease;
+    }}
+    .footer-links a:hover {{
+        border-bottom-color: var(--ink);
+    }}
+
+    /* Mobile Optimization & Responsive Breakpoints */
+    @media (max-width: 768px) {{
+        .main .block-container {{
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
+            padding-top: 1.25rem !important;
+        }}
+        [data-testid="stHorizontalBlock"] {{
+            flex-direction: column !important;
+            gap: 0.75rem !important;
+        }}
+        [data-testid="column"], [data-testid="stColumn"] {{
+            width: 100% !important;
+            flex: 1 1 100% !important;
+            min-width: 0 !important;
+        }}
+        .editorial-hero {{
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }}
+        .stat-callout {{
+            border-bottom: 1px solid var(--surface-muted);
+            padding: 10px 0;
+        }}
+        .footer-grid {{
+            flex-direction: column;
+            gap: 14px;
+        }}
+    }}
     </style>
     """,
     unsafe_allow_html=True,
@@ -375,18 +588,152 @@ def get_services():
 
 db, store, matcher, checker, explainer, parser, fda_client = get_services()
 
+# ==============================================================================
+# SESSION STATE & URL QUERY PARAMETER ROUTING (WITH CUSTOM 404 DETECTION)
+# ==============================================================================
+all_patients = store.list_all()
+if not all_patients:
+    from scripts.generate_synthetic_patients import generate_profiles
+    generate_profiles()
+    all_patients = store.list_all()
+
+patient_map = {p.patient_id: p for p in all_patients}
+scenario_names = {
+    "PT_BLEED_001": "Ramesh Sharma — Warfarin + Aspirin + Ibuprofen",
+    "PT_STATIN_002": "Sunita Patel — Simvastatin + Amlodipine + Amiodarone",
+    "PT_MTX_003": "Kavitha Reddy — Methotrexate + Bactrim + Naproxen",
+    "PT_CARDIO_005": "Arjun Nair — Clopidogrel + Omeprazole",
+    "PT_STABLE_004": "Rajesh Varma — Stable 2yr Cohort (Suppressed)",
+}
+
+if "active_workflow" not in st.session_state:
+    st.session_state["active_workflow"] = WORKFLOW_OPTIONS[0]
+
+if "selected_pid" not in st.session_state or st.session_state["selected_pid"] not in patient_map:
+    st.session_state["selected_pid"] = list(patient_map.keys())[0]
+
+# Check query parameters for deep linking or invalid 404 routes
+qp_workflow = st.query_params.get("workflow", "").strip()
+qp_patient = st.query_params.get("patient", "").strip()
+is_404_route = False
+not_found_reasons = []
+
+if qp_workflow:
+    if qp_workflow.lower() in WORKFLOW_SLUGS:
+        resolved_wf = WORKFLOW_SLUGS[qp_workflow.lower()]
+        if st.session_state.get("_last_qp_workflow") != qp_workflow:
+            st.session_state["active_workflow"] = resolved_wf
+            st.session_state["sidebar_wf_radio"] = resolved_wf
+            st.session_state["top_mobile_nav_segmented"] = resolved_wf
+    elif qp_workflow in WORKFLOW_OPTIONS:
+        if st.session_state.get("_last_qp_workflow") != qp_workflow:
+            st.session_state["active_workflow"] = qp_workflow
+            st.session_state["sidebar_wf_radio"] = qp_workflow
+            st.session_state["top_mobile_nav_segmented"] = qp_workflow
+    else:
+        is_404_route = True
+        not_found_reasons.append(f"Unknown clinical workflow route '{qp_workflow}'.")
+st.session_state["_last_qp_workflow"] = qp_workflow
+
+if qp_patient:
+    if qp_patient in patient_map:
+        if st.session_state.get("_last_qp_patient") != qp_patient:
+            st.session_state["selected_pid"] = qp_patient
+            st.session_state["sidebar_pid_select"] = qp_patient
+            st.session_state["mob_cohort_select"] = qp_patient
+    else:
+        is_404_route = True
+        not_found_reasons.append(f"Patient MRN '{qp_patient}' does not exist in the clinical cohort registry.")
+st.session_state["_last_qp_patient"] = qp_patient
+
+not_found_reason = " ".join(not_found_reasons)
+
+# Ensure widget session keys stay aligned with canonical state before widgets mount
+if st.session_state.get("sidebar_wf_radio") not in WORKFLOW_OPTIONS:
+    st.session_state["sidebar_wf_radio"] = st.session_state["active_workflow"]
+if st.session_state.get("top_mobile_nav_segmented") not in WORKFLOW_OPTIONS:
+    st.session_state["top_mobile_nav_segmented"] = st.session_state["active_workflow"]
+if st.session_state.get("sidebar_pid_select") not in patient_map:
+    st.session_state["sidebar_pid_select"] = st.session_state["selected_pid"]
+if st.session_state.get("mob_cohort_select") not in patient_map:
+    st.session_state["mob_cohort_select"] = st.session_state["selected_pid"]
+
+
+def navigate_to_workflow(wf_name: str):
+    """Switch active workflow across all navigation controls and clear invalid 404 query params."""
+    if wf_name not in WORKFLOW_OPTIONS:
+        wf_name = WORKFLOW_OPTIONS[0]
+    st.session_state["active_workflow"] = wf_name
+    st.session_state["sidebar_wf_radio"] = wf_name
+    st.session_state["top_mobile_nav_segmented"] = wf_name
+    slug = SLUG_BY_WORKFLOW.get(wf_name, "discovery")
+    st.query_params["workflow"] = slug
+    st.session_state["_last_qp_workflow"] = slug
+    if "patient" in st.query_params and st.query_params["patient"] not in patient_map:
+        del st.query_params["patient"]
+        st.session_state["_last_qp_patient"] = ""
+
+
+def navigate_to_patient(pid: str):
+    """Switch active patient cohort across all selectors and keep query params synchronized."""
+    if pid not in patient_map:
+        return
+    st.session_state["selected_pid"] = pid
+    st.session_state["sidebar_pid_select"] = pid
+    st.session_state["mob_cohort_select"] = pid
+    if "patient" in st.query_params:
+        st.query_params["patient"] = pid
+        st.session_state["_last_qp_patient"] = pid
+    if (
+        "workflow" in st.query_params
+        and st.query_params["workflow"].lower() not in WORKFLOW_SLUGS
+        and st.query_params["workflow"] not in WORKFLOW_OPTIONS
+    ):
+        slug = SLUG_BY_WORKFLOW.get(st.session_state["active_workflow"], "discovery")
+        st.query_params["workflow"] = slug
+        st.session_state["_last_qp_workflow"] = slug
+
+
+def _on_sidebar_wf_change():
+    navigate_to_workflow(st.session_state.get("sidebar_wf_radio", WORKFLOW_OPTIONS[0]))
+
+
+def _on_segmented_wf_change():
+    chosen = st.session_state.get("top_mobile_nav_segmented")
+    if chosen in WORKFLOW_OPTIONS:
+        navigate_to_workflow(chosen)
+    else:
+        st.session_state["top_mobile_nav_segmented"] = st.session_state["active_workflow"]
+
+
+def _on_sidebar_pid_change():
+    navigate_to_patient(st.session_state.get("sidebar_pid_select", st.session_state["selected_pid"]))
+
+
+def _on_mob_pid_change():
+    navigate_to_patient(st.session_state.get("mob_cohort_select", st.session_state["selected_pid"]))
+
+
+def _on_recover_home():
+    st.query_params.clear()
+    st.session_state["_last_qp_workflow"] = ""
+    st.session_state["_last_qp_patient"] = ""
+    navigate_to_workflow(WORKFLOW_OPTIONS[0])
+
 
 # ==============================================================================
-# SIDEBAR NAVIGATION & DEMO SELECTOR
+# SIDEBAR NAVIGATION & COHORT SELECTOR
 # ==============================================================================
 with st.sidebar:
     st.markdown(
         """
         <div class="brand-row" style="margin-bottom: 6px;">
-            <span class="brand-title">LADIP</span>
-            <span class="brand-dot">✓</span>
+            <a href="?workflow=discovery" target="_self" class="brand-link" title="Return to Multi-Drug Interaction Discovery">
+                <span class="brand-title">LADIP</span>
+                <span class="brand-dot">✓</span>
+            </a>
         </div>
-        <div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 24px;">
+        <div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 20px;">
             Longitudinal Pharmacovigilance &amp; Causality Engine
         </div>
         """,
@@ -394,48 +741,28 @@ with st.sidebar:
     )
 
     st.markdown('<div class="section-eyebrow">Clinical Workspace</div>', unsafe_allow_html=True)
-    menu = st.radio(
+    sidebar_wf = st.radio(
         "Workspace Navigation",
-        [
-            "Multi-Drug Interaction Discovery",
-            "Prospective Drug Safety Check",
-            "Patient Profile & Report Parser",
-            "FAERS Disproportionality Explorer",
-        ],
-        index=0,
+        WORKFLOW_OPTIONS,
+        key="sidebar_wf_radio",
+        on_change=_on_sidebar_wf_change,
         label_visibility="collapsed",
     )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 24px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0;'/>", unsafe_allow_html=True)
     st.markdown('<div class="section-eyebrow">Patient Cohort Registry</div>', unsafe_allow_html=True)
 
-    all_patients = store.list_all()
-    if not all_patients:
-        st.warning("No patient profiles found in local store.")
-        if st.button("Initialize Patient Cohort"):
-            from scripts.generate_synthetic_patients import generate_profiles
-            generate_profiles()
-            st.rerun()
-        st.stop()
-
-    patient_map = {p.patient_id: p for p in all_patients}
-    scenario_names = {
-        "PT_BLEED_001": "● Ramesh Sharma — Warfarin + Aspirin + Ibuprofen",
-        "PT_STATIN_002": "● Sunita Patel — Simvastatin + Amlodipine + Amiodarone",
-        "PT_MTX_003": "● Kavitha Reddy — Methotrexate + Bactrim + Naproxen",
-        "PT_CARDIO_005": "● Arjun Nair — Clopidogrel + Omeprazole",
-        "PT_STABLE_004": "● Rajesh Varma — Stable 2yr Cohort (Suppressed)",
-    }
-
-    selected_pid = st.selectbox(
+    pid_keys = list(patient_map.keys())
+    sidebar_pid = st.selectbox(
         "Select Patient Case",
-        options=list(patient_map.keys()),
+        options=pid_keys,
         format_func=lambda pid: scenario_names.get(pid, f"{patient_map[pid].name} ({pid})"),
+        key="sidebar_pid_select",
+        on_change=_on_sidebar_pid_change,
         label_visibility="collapsed",
     )
-    patient = patient_map[selected_pid]
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 24px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0;'/>", unsafe_allow_html=True)
     st.markdown(
         """
         <div style="font-size: 0.78rem; color: #6B6B6B; line-height: 1.5;">
@@ -446,16 +773,78 @@ with st.sidebar:
         unsafe_allow_html=True,
     )
 
+menu = st.session_state["active_workflow"]
+selected_pid = st.session_state["selected_pid"]
+patient = patient_map[selected_pid]
 
 # ==============================================================================
-# EDITORIAL HERO HEADER
+# DYNAMIC PAGE TITLE, META DESCRIPTION & MOTION.DEV SPRING ORCHESTRATION
+# ==============================================================================
+active_meta_key = "404" if is_404_route else menu
+active_meta = PAGE_META.get(active_meta_key, PAGE_META[WORKFLOW_OPTIONS[0]])
+dynamic_doc_title = (
+    active_meta["title"]
+    if is_404_route
+    else f"{menu} — {patient.name} | LADIP Pharmacovigilance"
+)
+
+st.markdown(
+    f"""
+    <meta name="description" content="{active_meta['description']}" />
+    <meta property="og:title" content="{dynamic_doc_title}" />
+    <meta property="og:description" content="{active_meta['description']}" />
+    <meta property="og:type" content="website" />
+    """,
+    unsafe_allow_html=True,
+)
+
+st.html(
+    f"""
+    <script type="module">
+    try {{
+      if (window.parent && window.parent.document) {{
+        window.parent.document.title = {dynamic_doc_title!r};
+      }}
+      document.title = {dynamic_doc_title!r};
+    }} catch (_) {{}}
+
+    import("https://cdn.jsdelivr.net/npm/motion@12/+esm")
+      .then((motion) => {{
+        const doc = (window.parent && window.parent.document) ? window.parent.document : document;
+        const targets = doc.querySelectorAll(".editorial-hero, .stat-callout, .alert-row, .suppressed-row");
+        if (targets.length && typeof motion.animate === "function") {{
+          motion.animate(
+            targets,
+            {{ opacity: [0, 1], transform: ["translateY(10px)", "translateY(0px)"] }},
+            {{
+              type: "spring",
+              stiffness: 120,
+              damping: 18,
+              delay: typeof motion.stagger === "function" ? motion.stagger(0.04) : 0,
+            }}
+          );
+        }}
+      }})
+      .catch(() => {{}});
+    </script>
+    """,
+    unsafe_allow_javascript=True,
+)
+
+# ==============================================================================
+# MOBILE NAVIGATION MENU & EDITORIAL HERO HEADER
 # ==============================================================================
 st.markdown(
     """
     <div class="editorial-hero">
         <div class="brand-row">
-            <span class="brand-title">LADIP</span>
-            <span class="brand-dot">✓</span>
+            <a href="?workflow=discovery" target="_self" class="brand-link" title="Click to return to Multi-Drug Interaction Discovery">
+                <span class="brand-title">LADIP</span>
+                <span class="brand-dot">✓</span>
+            </a>
+            <span style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6B6B6B;">
+                Clinical Decision Support v2.0
+            </span>
         </div>
         <div class="credibility-line">
             <span class="gold-star">★</span>
@@ -474,11 +863,69 @@ st.markdown(
     unsafe_allow_html=True,
 )
 
+# Responsive Mobile Menu & Quick Navigation Drawer (accessible on all viewports)
+nav_col1, nav_col2 = st.columns([3.5, 1.5])
+with nav_col1:
+    seg_choice = st.segmented_control(
+        "Clinical Workflow Navigation",
+        options=WORKFLOW_OPTIONS,
+        label_visibility="collapsed",
+        key="top_mobile_nav_segmented",
+        on_change=_on_segmented_wf_change,
+    )
+
+with nav_col2:
+    with st.popover("Mobile Menu & Cohort", icon=":material/menu:", width="stretch"):
+        st.markdown('<div class="section-eyebrow">Quick Mobile Navigation</div>', unsafe_allow_html=True)
+        for wf_opt in WORKFLOW_OPTIONS:
+            st.button(
+                wf_opt,
+                key=f"mob_menu_{wf_opt}",
+                width="stretch",
+                on_click=navigate_to_workflow,
+                args=(wf_opt,),
+            )
+        st.markdown('<div class="section-eyebrow" style="margin-top:12px;">Switch Patient Cohort</div>', unsafe_allow_html=True)
+        mob_pid = st.selectbox(
+            "Mobile Cohort Switcher",
+            options=pid_keys,
+            format_func=lambda pid: scenario_names.get(pid, f"{patient_map[pid].name} ({pid})"),
+            key="mob_cohort_select",
+            on_change=_on_mob_pid_change,
+            label_visibility="collapsed",
+        )
+
+st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
+
+# ==============================================================================
+# CUSTOM 404 PAGE (WHEN UNKNOWN ROUTE OR PATIENT MRN IS REQUESTED)
+# ==============================================================================
+if is_404_route:
+    st.markdown(
+        f"""
+        <div style="border-top: 2px solid #DC2626; border-bottom: 1px solid #E5E5E0; padding: 36px 0; margin: 16px 0 28px 0;">
+            <div class="section-eyebrow" style="color: #DC2626;">HTTP 404 — RESOURCE NOT FOUND</div>
+            <div class="stat-number" style="font-size: 4.2rem; color: #1A1A1A; margin: 8px 0;">404</div>
+            <h2 style="font-family: 'Playfair Display', Georgia, serif; font-size: 2rem; font-weight: 700; color: #1A1A1A; margin: 0 0 12px 0;">
+                Clinical Route or Patient Cohort Not Found
+            </h2>
+            <p style="font-size: 0.96rem; color: #6B6B6B; max-width: 620px; line-height: 1.6; margin-bottom: 16px;">
+                {not_found_reason} Please verify the URL parameters or return to the main clinical pharmacovigilance workspace.
+            </p>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
+    st.button(
+        "Return to Multi-Drug Interaction Discovery",
+        icon=":material/home:",
+        on_click=_on_recover_home,
+    )
 
 # ==============================================================================
 # WORKFLOW 1: MULTI-DRUG INTERACTION DISCOVERY
 # ==============================================================================
-if menu == "Multi-Drug Interaction Discovery":
+elif menu == "Multi-Drug Interaction Discovery":
     active_meds = patient.get_active_medications()
 
     # Patient Editorial Summary Strip
@@ -522,14 +969,16 @@ if menu == "Multi-Drug Interaction Discovery":
             unsafe_allow_html=True,
         )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0 32px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0 28px 0;'/>", unsafe_allow_html=True)
 
-    # Compute alerts early so metrics and charts can use them
+    # Compute alerts early so metrics and Bklit UI charts can use them
     alerts = matcher.match_patient(patient)
     active_alerts = [a for a in alerts if not a.is_suppressed]
     suppressed_alerts = [a for a in alerts if a.is_suppressed]
     crit_count = sum(1 for a in active_alerts if a.severity_tier == "CRITICAL")
-    symptom_matched = sum(1 for a in active_alerts if a.patient_has_matching_symptom)
+    top_prr = max([a.prr for a in active_alerts], default=1.0)
+    top_priority = max([a.alert_priority_score for a in active_alerts], default=0.0)
+    top_dtas = max([a.temporal_score for a in active_alerts], default=0.0)
 
     # Oversized Stat Callouts Ribbon (The Bella "24.1%" Treatment)
     m1, m2, m3, m4 = st.columns(4)
@@ -565,7 +1014,6 @@ if menu == "Multi-Drug Interaction Discovery":
             unsafe_allow_html=True,
         )
     with m4:
-        top_prr = max([a.prr for a in active_alerts], default=1.0)
         st.markdown(
             f"""
             <div class="stat-callout">
@@ -576,12 +1024,9 @@ if menu == "Multi-Drug Interaction Discovery":
             unsafe_allow_html=True,
         )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 28px 0 32px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 24px 0 28px 0;'/>", unsafe_allow_html=True)
 
-    # Longitudinal Regimen & Symptom Chronology
-    st.markdown('<div class="section-eyebrow">Longitudinal Chronology</div>', unsafe_allow_html=True)
-    st.markdown("<h3 style='font-size: 1.25rem; font-weight: 700; margin: 0 0 16px 0;'>Medication Overlap &amp; Adverse Event Timeline</h3>", unsafe_allow_html=True)
-
+    # Bklit.UI Longitudinal Regimen & Symptom Chronology + Radial Telemetry
     timeline_rows = []
     ref_today = date.today()
 
@@ -593,7 +1038,7 @@ if menu == "Multi-Drug Interaction Discovery":
             "Item": m.drug_name,
             "Start": s_date.isoformat(),
             "End": e_date.isoformat(),
-            "Detail": f"{m.dose} {m.dose_unit} {m.frequency}",
+            "Detail": f"{m.dose:g} {m.dose_unit} {m.frequency}",
         })
 
     for s in patient.symptoms:
@@ -607,55 +1052,51 @@ if menu == "Multi-Drug Interaction Discovery":
                 "Detail": f"Severity {s.severity}/10",
             })
 
-    if timeline_rows:
-        df_timeline = pd.DataFrame(timeline_rows)
-        fig = px.timeline(
-            df_timeline,
-            x_start="Start",
-            x_end="End",
-            y="Item",
-            color="Track",
-            hover_data=["Detail"],
-            color_discrete_map={
-                "Medication Regimen": "#D4A5E5",
-                "Adverse Event Onset": "#DC2626",
-            },
-            height=250,
-        )
-        fig.update_yaxes(
-            autorange="reversed",
-            title="",
-            showgrid=False,
-            tickfont=dict(size=13, family="Plus Jakarta Sans, sans-serif", color="#1A1A1A"),
-        )
-        fig.update_xaxes(
-            title="",
-            showgrid=True,
-            gridcolor="#E5E5E0",
-            gridwidth=1,
-            griddash="dot",
-            tickfont=dict(size=11, family="Plus Jakarta Sans, sans-serif", color="#6B6B6B"),
-        )
-        fig.update_layout(
-            margin=dict(l=0, r=0, t=10, b=10),
-            legend=dict(
-                title="",
-                orientation="h",
-                yanchor="bottom",
-                y=1.04,
-                xanchor="left",
-                x=0,
-                font=dict(size=12, family="Plus Jakarta Sans, sans-serif", color="#1A1A1A"),
-            ),
-            plot_bgcolor="#FFFFFF",
-            paper_bgcolor="#FFFFFF",
-        )
-        st.plotly_chart(fig, width="stretch")
+    total_evaluated = max(len(alerts), 1)
+    suppression_pct = (len(suppressed_alerts) / total_evaluated) * 100.0 if alerts else 100.0
 
-    st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+    chart_col1, chart_col2 = st.columns([1.65, 1.0])
+    with chart_col1:
+        bklit_timeline_chart(
+            timeline_rows,
+            title=f"Longitudinal Regimen & Adverse Event Chronology — {patient.name}",
+            subtitle="Interactive Bklit.UI interval tracks with motion.dev spring transitions.",
+            key=f"bklit_timeline_{patient.patient_id}",
+        )
+    with chart_col2:
+        bklit_ring_gauge_chart(
+            [
+                {
+                    "label": "Peak Alert Priority",
+                    "display": f"{top_priority:.1f}",
+                    "percent": min(100.0, top_priority),
+                    "color": "#DC2626" if top_priority >= 80 else ("#E8C840" if top_priority >= 50 else "#1B7A3D"),
+                    "subtitle": "Composite severity score",
+                },
+                {
+                    "label": "Temporal DTAS",
+                    "display": f"{int(round(top_dtas * 100))}%",
+                    "percent": min(100.0, top_dtas * 100.0),
+                    "color": "#D4A5E5",
+                    "subtitle": "Onset plausibility index",
+                },
+                {
+                    "label": "Fatigue Suppression",
+                    "display": f"{int(round(suppression_pct))}%",
+                    "percent": suppression_pct,
+                    "color": "#1B7A3D",
+                    "subtitle": f"{len(suppressed_alerts)}/{len(alerts)} signals muted",
+                },
+            ],
+            title="Signal & Fatigue Telemetry",
+            subtitle="Hover any Bklit ring to inspect normalized telemetry.",
+            key=f"bklit_rings_{patient.patient_id}",
+        )
 
-    # Alert Filter Header
-    col_hdr, col_ctrl1, col_ctrl2 = st.columns([4, 2, 2])
+    st.markdown("<div style='height: 20px;'></div>", unsafe_allow_html=True)
+
+    # Alert Filter Header & Refresh Action
+    col_hdr, col_ctrl1, col_ctrl2, col_ctrl3 = st.columns([3.4, 1.6, 1.5, 1.5])
     with col_hdr:
         st.markdown('<div class="section-eyebrow">Clinical Signal Triage</div>', unsafe_allow_html=True)
         st.markdown("<h3 style='font-size: 1.25rem; font-weight: 700; margin: 0;'>Prioritized Pharmacovigilance Signals</h3>", unsafe_allow_html=True)
@@ -667,13 +1108,25 @@ if menu == "Multi-Drug Interaction Discovery":
             ["ALL", "CRITICAL", "HIGH", "MODERATE", "LOW"],
             label_visibility="collapsed",
         )
+    with col_ctrl3:
+        if st.button("Refresh Signals", icon=":material/refresh:", width="stretch"):
+            st.session_state["signal_refresh_msg"] = (
+                f"Synchronized {len(alerts)} pharmacovigilance signals for {patient.name} ({patient.patient_id})."
+            )
+
+    if st.session_state.get("signal_refresh_msg"):
+        st.success(st.session_state.pop("signal_refresh_msg"), icon=":material/check_circle:")
 
     st.markdown("<div style='height: 12px;'></div>", unsafe_allow_html=True)
 
     if not active_alerts:
+        st.success(
+            f"Regimen verified stable for {patient.name}: 0 uncontrolled drug-drug interactions active.",
+            icon=":material/verified:",
+        )
         st.markdown(
             f"""
-            <div style="border-top: 1px solid #E5E5E0; border-bottom: 1px solid #E5E5E0; padding: 32px 0;">
+            <div style="border-top: 1px solid #E5E5E0; border-bottom: 1px solid #E5E5E0; padding: 28px 0;">
                 <div style="font-family: 'Playfair Display', serif; font-size: 1.5rem; font-weight: 700; color: #1B7A3D; margin-bottom: 8px;">
                     Regimen Stable — Zero Uncontrolled Interaction Risks
                 </div>
@@ -685,10 +1138,16 @@ if menu == "Multi-Drug Interaction Discovery":
             unsafe_allow_html=True,
         )
     else:
-        for alert in active_alerts:
-            if tier_choice != "ALL" and alert.severity_tier != tier_choice:
-                continue
-
+        filtered_active = [
+            a for a in active_alerts if tier_choice == "ALL" or a.severity_tier == tier_choice
+        ]
+        if not filtered_active:
+            st.error(
+                f"No active signals match severity tier '{tier_choice}' for {patient.name}. "
+                f"({len(active_alerts)} signal(s) exist in other tiers.)",
+                icon=":material/filter_alt_off:",
+            )
+        for alert in filtered_active:
             tier_badge = f"badge-{alert.severity_tier.lower()}"
 
             st.markdown('<div class="alert-row">', unsafe_allow_html=True)
@@ -812,24 +1271,27 @@ if menu == "Multi-Drug Interaction Discovery":
             st.markdown("</div>", unsafe_allow_html=True)
 
     # Render Suppressed Alerts if toggled
-    if show_suppressed and suppressed_alerts:
+    if show_suppressed:
         st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 28px 0;'/>", unsafe_allow_html=True)
         st.markdown('<div class="section-eyebrow">Longitudinal Alert Suppression</div>', unsafe_allow_html=True)
         st.markdown("<h4 style='font-size: 1.1rem; font-weight: 700; margin: 0 0 16px 0;'>Suppressed Background Interactions</h4>", unsafe_allow_html=True)
-        for s_alert in suppressed_alerts:
-            st.markdown(
-                f"""
-                <div class="suppressed-row">
-                    <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">
-                        {s_alert.combo_str} &rarr; {s_alert.adverse_event} &nbsp;<span class="badge-low">SUPPRESSED</span>
+        if suppressed_alerts:
+            for s_alert in suppressed_alerts:
+                st.markdown(
+                    f"""
+                    <div class="suppressed-row">
+                        <div style="font-weight: 700; font-size: 0.95rem; color: #1A1A1A;">
+                            {s_alert.combo_str} &rarr; {s_alert.adverse_event} &nbsp;<span class="badge-low">SUPPRESSED</span>
+                        </div>
+                        <div style="font-size: 0.85rem; color: #6B6B6B; margin-top: 4px;">
+                            {s_alert.suppression_reason}
+                        </div>
                     </div>
-                    <div style="font-size: 0.85rem; color: #6B6B6B; margin-top: 4px;">
-                        {s_alert.suppression_reason}
-                    </div>
-                </div>
-                """,
-                unsafe_allow_html=True,
-            )
+                    """,
+                    unsafe_allow_html=True,
+                )
+        else:
+            st.caption("No suppressed background signals for this patient's active regimen.")
 
 
 # ==============================================================================
@@ -843,10 +1305,10 @@ elif menu == "Prospective Drug Safety Check":
         unsafe_allow_html=True,
     )
 
-    pills_html = "".join([f'<span class="drug-pill">{m.drug_name} ({m.dose} {m.dose_unit})</span>' for m in patient.get_active_medications()])
+    pills_html = "".join([f'<span class="drug-pill">{m.drug_name} ({m.dose:g} {m.dose_unit})</span>' for m in patient.get_active_medications()])
     st.markdown(
         f"""
-        <div style="border-top: 1px solid #E5E5E0; border-bottom: 1px solid #E5E5E0; padding: 20px 0; margin-bottom: 28px;">
+        <div style="border-top: 1px solid #E5E5E0; border-bottom: 1px solid #E5E5E0; padding: 20px 0; margin-bottom: 24px;">
             <div class="section-eyebrow">Active Patient Regimen — {patient.name}</div>
             <div style="margin-top: 8px;">{pills_html}</div>
         </div>
@@ -854,20 +1316,76 @@ elif menu == "Prospective Drug Safety Check":
         unsafe_allow_html=True,
     )
 
+    if "prospective_drug_name" not in st.session_state:
+        st.session_state["prospective_drug_name"] = "Ibuprofen"
+    if "prospective_drug_dose" not in st.session_state:
+        st.session_state["prospective_drug_dose"] = 400.0
+    if "prospective_drug_input" not in st.session_state:
+        st.session_state["prospective_drug_input"] = st.session_state["prospective_drug_name"]
+    if "prospective_dose_input" not in st.session_state:
+        st.session_state["prospective_dose_input"] = float(st.session_state["prospective_drug_dose"])
+
+    def _apply_preset_candidate(drug_name: str, drug_dose: float):
+        st.session_state["prospective_drug_name"] = drug_name
+        st.session_state["prospective_drug_dose"] = float(drug_dose)
+        st.session_state["prospective_drug_input"] = drug_name
+        st.session_state["prospective_dose_input"] = float(drug_dose)
+
+    st.markdown('<div class="section-eyebrow">Quick Clinical Test Candidates</div>', unsafe_allow_html=True)
+    preset_cols = st.columns(5)
+    presets = [
+        ("Ibuprofen", 400.0),
+        ("Paracetamol", 500.0),
+        ("Amiodarone", 200.0),
+        ("Bactrim", 800.0),
+        ("Pantoprazole", 40.0),
+    ]
+    for idx, (p_name, p_dose) in enumerate(presets):
+        with preset_cols[idx]:
+            st.button(
+                f"{p_name} {int(p_dose)}mg",
+                key=f"preset_btn_{p_name}",
+                width="stretch",
+                on_click=_apply_preset_candidate,
+                args=(p_name, p_dose),
+            )
+
     with st.form("prospective_check_form"):
         st.markdown('<div class="section-eyebrow">Candidate Prescription</div>', unsafe_allow_html=True)
         col_in1, col_in2, col_in3 = st.columns([3, 2, 2])
         with col_in1:
-            proposed_drug = st.text_input("Proposed Drug Name", value="Ibuprofen", placeholder="e.g. Ibuprofen, Amiodarone, Bactrim, Naproxen")
+            proposed_drug = st.text_input(
+                "Proposed Drug Name",
+                key="prospective_drug_input",
+                help="Enter generic or brand name (Ibuprofen, Amiodarone, Bactrim, Paracetamol, Naproxen)",
+            )
         with col_in2:
-            proposed_dose = st.number_input("Dose Amount", value=400.0, step=50.0)
+            proposed_dose = st.number_input(
+                "Dose Amount",
+                key="prospective_dose_input",
+                min_value=0.0,
+                step=50.0,
+            )
         with col_in3:
             proposed_unit = st.selectbox("Dose Unit", ["mg", "mcg", "g", "ml"])
 
-        st.form_submit_button("Run Prospective Safety Check")
+        submitted_check = st.form_submit_button("Run Prospective Safety Check", icon=":material/fact_check:")
 
-    if proposed_drug.strip():
-        assessment = checker.assess_new_drug(patient, proposed_drug.strip(), dose=proposed_dose, dose_unit=proposed_unit)
+    cleaned_drug = proposed_drug.strip()
+    if not cleaned_drug or not any(ch.isalpha() for ch in cleaned_drug):
+        st.error(
+            "Invalid candidate medication: please enter a valid medication name (letters required) before running a safety check.",
+            icon=":material/error:",
+        )
+    elif proposed_dose <= 0:
+        st.error(
+            "Invalid dosage amount: please enter a dose greater than 0 to evaluate prospective safety.",
+            icon=":material/error:",
+        )
+    else:
+        st.session_state["prospective_drug_name"] = cleaned_drug
+        st.session_state["prospective_drug_dose"] = proposed_dose
+        assessment = checker.assess_new_drug(patient, cleaned_drug, dose=proposed_dose, dose_unit=proposed_unit)
 
         status_map = {
             "CRITICAL_CONTRAINDICATION": ("CRITICAL CONTRAINDICATION", "#DC2626"),
@@ -877,12 +1395,31 @@ elif menu == "Prospective Drug Safety Check":
         }
         status_label, status_color = status_map.get(assessment.overall_safety_status, ("ASSESSMENT COMPLETE", "#1A1A1A"))
 
+        # Explicit Success or Error Message Banner
+        if assessment.overall_safety_status == "LOW_RISK_COMPATIBLE":
+            st.success(
+                f"Prospective safety verification passed: {cleaned_drug.title()} ({proposed_dose:g} {proposed_unit}) "
+                f"is compatible with {patient.name}'s active regimen.",
+                icon=":material/check_circle:",
+            )
+        elif assessment.overall_safety_status in ("CRITICAL_CONTRAINDICATION", "HIGH_RISK"):
+            st.error(
+                f"{status_label}: Prescribing {cleaned_drug.title()} ({proposed_dose:g} {proposed_unit}) to "
+                f"{patient.name} triggers high-severity pharmacovigilance warnings.",
+                icon=":material/warning:",
+            )
+        else:
+            st.info(
+                f"{status_label}: Review clinical monitoring guidance before prescribing {cleaned_drug.title()}.",
+                icon=":material/info:",
+            )
+
         st.markdown(
             f"""
-            <div style="border-top: 2px solid {status_color}; border-bottom: 1px solid #E5E5E0; padding: 28px 0; margin: 28px 0;">
+            <div style="border-top: 2px solid {status_color}; border-bottom: 1px solid #E5E5E0; padding: 24px 0; margin: 20px 0;">
                 <div class="section-eyebrow" style="color: {status_color};">{status_label}</div>
                 <div style="font-family: 'Playfair Display', serif; font-size: 1.75rem; font-weight: 700; color: #1A1A1A; margin: 6px 0 12px 0;">
-                    {proposed_drug.strip().title()} ({proposed_dose:g} {proposed_unit})
+                    {cleaned_drug.title()} ({proposed_dose:g} {proposed_unit})
                 </div>
                 <div style="font-size: 1rem; color: #1A1A1A; line-height: 1.6; max-width: 720px;">
                     {assessment.recommendation}
@@ -912,12 +1449,29 @@ elif menu == "Prospective Drug Safety Check":
         with col_r:
             st.markdown('<div class="section-eyebrow">Emergent Multi-Drug FAERS Signals</div>', unsafe_allow_html=True)
             if assessment.flagged_combinations:
+                bklit_items = [
+                    {
+                        "label": f"{c['reaction'].title()} ({c['combo']})",
+                        "value": float(c["prr"]),
+                        "chi2": round(float(c["chi2"]), 1),
+                        "cases": int(c["cases"]),
+                        "tier": c["tier"],
+                    }
+                    for c in assessment.flagged_combinations
+                ]
+                bklit_bar_chart(
+                    bklit_items,
+                    threshold=2.0,
+                    title="Emergent Combination Disproportionality (PRR)",
+                    subtitle="Bklit.UI comparison of triggered multi-drug reporting ratios.",
+                    key=f"prospective_bklit_{patient.patient_id}_{cleaned_drug}",
+                )
                 for c_info in assessment.flagged_combinations:
                     badge = f"badge-{c_info['tier'].lower()}"
                     st.markdown(
                         f"""
                         <div style="border-bottom: 1px solid #E5E5E0; padding: 14px 0;">
-                            <div style="display: flex; justify-content: space-between; align-items: baseline;">
+                            <div style="display: flex; flex-wrap: wrap; justify-content: space-between; align-items: baseline; gap: 8px;">
                                 <span style="font-weight: 700; font-size: 0.98rem; color: #1A1A1A;">{c_info['combo']}</span>
                                 <span class="{badge}">{c_info['tier']}</span>
                             </div>
@@ -941,6 +1495,16 @@ elif menu == "Prospective Drug Safety Check":
 elif menu == "Patient Profile & Report Parser":
     st.markdown('<div class="section-eyebrow">Longitudinal Health Record</div>', unsafe_allow_html=True)
     st.markdown(f"<h2 style='font-family: Playfair Display, serif; font-size: 2.1rem; font-weight: 700; margin: 0 0 20px 0;'>{patient.name}</h2>", unsafe_allow_html=True)
+
+    # Display persistent feedback if a profile was just extracted
+    if st.session_state.get("extracted_profile_feedback"):
+        fb = st.session_state["extracted_profile_feedback"]
+        st.success(fb["message"], icon=":material/check_circle:")
+        with st.expander("View Extracted Patient Timeline JSON", expanded=False):
+            st.json(fb["data"])
+        if st.button("Dismiss Extraction Notice", key="dismiss_extract_fb"):
+            del st.session_state["extracted_profile_feedback"]
+            st.rerun()
 
     tab_inspect, tab_upload = st.tabs(["Active Electronic Health Record", "Ingest Clinical Report (PDF / Image / OCR)"])
 
@@ -1010,14 +1574,14 @@ elif menu == "Patient Profile & Report Parser":
             else:
                 st.caption("No laboratory markers recorded.")
 
-        st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
         st.markdown('<div class="section-eyebrow">Medication Regimen History</div>', unsafe_allow_html=True)
         med_records = [
             {
                 "Medication": m.drug_name,
                 "Normalized Ingredient": m.normalized_name,
                 "RxCUI": m.rxcui,
-                "Regimen": f"{m.dose} {m.dose_unit} {m.frequency}",
+                "Regimen": f"{m.dose:g} {m.dose_unit} {m.frequency}",
                 "Route": m.route,
                 "Start Date": m.start_date.isoformat() if m.start_date else "Unknown",
                 "End Date": m.end_date.isoformat() if m.end_date else "Active",
@@ -1028,44 +1592,86 @@ elif menu == "Patient Profile & Report Parser":
 
         st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
         st.markdown('<div class="section-eyebrow">Adverse Reactions &amp; Symptom Log</div>', unsafe_allow_html=True)
-        sym_records = [
-            {
-                "Symptom": s.description,
-                "MedDRA Preferred Term": s.meddra_term,
-                "Severity (1-10)": s.severity,
-                "Onset Date": s.onset_date.isoformat() if s.onset_date else "Unknown",
-                "Resolution": s.resolution_date.isoformat() if s.resolution_date else "Ongoing",
-            }
-            for s in patient.symptoms
-        ]
-        st.dataframe(pd.DataFrame(sym_records), hide_index=True, width="stretch")
+        if patient.symptoms:
+            sym_records = [
+                {
+                    "Symptom": s.description,
+                    "MedDRA Preferred Term": s.meddra_term,
+                    "Severity (1-10)": s.severity,
+                    "Onset Date": s.onset_date.isoformat() if s.onset_date else "Unknown",
+                    "Resolution": s.resolution_date.isoformat() if s.resolution_date else "Ongoing",
+                }
+                for s in patient.symptoms
+            ]
+            st.dataframe(pd.DataFrame(sym_records), hide_index=True, width="stretch")
+        else:
+            st.caption("No adverse reactions or symptoms recorded for this patient.")
 
     with tab_upload:
         st.markdown('<div class="section-eyebrow" style="margin-top: 16px;">Automated Clinical Document Parser</div>', unsafe_allow_html=True)
-        up_file = st.file_uploader("Upload Discharge Summary or Prescription", type=["pdf", "png", "jpg", "jpeg", "txt"])
+        if "clinical_note_draft" not in st.session_state:
+            st.session_state["clinical_note_draft"] = ""
+
+        if st.button("Load Sample Clinical Discharge Summary", icon=":material/description:"):
+            st.session_state["clinical_note_draft"] = (
+                "Patient Name: Vikram Deshmukh\n"
+                "Patient ID: PT_CLINICAL_006\n"
+                "68yo male with Atrial Fibrillation and Osteoarthritis.\n"
+                "Allergies: Penicillin\n"
+                "Medications:\n"
+                "- Warfarin 5 mg QD started 2026-01-15\n"
+                "- Aspirin 81 mg QD started 2026-02-01\n"
+                "- Ibuprofen 400 mg TID started 2026-09-18\n"
+                "Symptoms:\n"
+                "Admitted 2026-09-21 for acute gastrointestinal hemorrhage and melena."
+            )
+            st.rerun()
+
+        up_file = st.file_uploader("Upload Discharge Summary or Prescription (Images auto-compressed)", type=["pdf", "png", "jpg", "jpeg", "txt"])
         txt_in = st.text_area(
-            "Or paste clinical chart notes directly",
-            height=140,
-            placeholder="e.g. 68yo male with Atrial Fibrillation admitted for acute GI hemorrhage 3 days after initiating Ibuprofen...",
+            "Clinical chart notes for timeline extraction",
+            value=st.session_state["clinical_note_draft"],
+            height=150,
+            help="Paste a clinical discharge summary or prescription order listing medications, doses, dates, and symptoms.",
         )
 
-        if st.button("Extract & Save Patient Timeline"):
-            if up_file:
-                ext = up_file.name.split(".")[-1].lower()
-                b_content = up_file.read()
-                f_type = "pdf" if ext == "pdf" else ("image" if ext in ["png", "jpg", "jpeg"] else "text")
-                new_profile = parser.parse_report(b_content, file_type=f_type)
-            elif txt_in.strip():
-                new_profile = parser.parse_report(txt_in, file_type="text")
+        if st.button("Extract & Save Patient Timeline", icon=":material/upload_file:"):
+            if up_file is None and not txt_in.strip():
+                st.error(
+                    "No clinical document provided: please upload a PDF/image file or enter clinical chart notes before extracting.",
+                    icon=":material/error:",
+                )
             else:
-                st.warning("Please upload a document or paste clinical text.")
-                new_profile = None
+                try:
+                    if up_file is not None:
+                        ext = up_file.name.split(".")[-1].lower()
+                        b_content = up_file.read()
+                        f_type = "pdf" if ext == "pdf" else ("image" if ext in ["png", "jpg", "jpeg"] else "text")
+                        if f_type == "image":
+                            b_content = parser.compress_image_bytes(b_content)
+                        new_profile = parser.parse_report(b_content, file_type=f_type)
+                    else:
+                        new_profile = parser.parse_report(txt_in.strip(), file_type="text")
 
-            if new_profile:
-                store.save(new_profile)
-                st.success(f"Extracted longitudinal profile for {new_profile.name} ({new_profile.patient_id})")
-                st.json(new_profile.to_dict())
-                st.rerun()
+                    if not new_profile.medications and not new_profile.symptoms:
+                        st.error(
+                            "Extraction incomplete: no recognizable medication regimens or adverse symptoms were found in the document.",
+                            icon=":material/error:",
+                        )
+                    else:
+                        store.save(new_profile)
+                        st.session_state["selected_pid"] = new_profile.patient_id
+                        st.session_state["extracted_profile_feedback"] = {
+                            "message": (
+                                f"Successfully extracted and saved longitudinal profile for {new_profile.name} "
+                                f"({new_profile.patient_id}) — {len(new_profile.medications)} medication(s) and "
+                                f"{len(new_profile.symptoms)} symptom(s) indexed."
+                            ),
+                            "data": new_profile.to_dict(),
+                        }
+                        st.rerun()
+                except Exception as exc:
+                    st.error(f"Failed to parse clinical document: {exc}", icon=":material/error:")
 
 
 # ==============================================================================
@@ -1075,22 +1681,58 @@ elif menu == "FAERS Disproportionality Explorer":
     st.markdown('<div class="section-eyebrow">Empirical Signal Mining</div>', unsafe_allow_html=True)
     st.markdown("<h2 style='font-family: Playfair Display, serif; font-size: 2rem; font-weight: 700; margin: 0 0 8px 0;'>FAERS Disproportionality Explorer</h2>", unsafe_allow_html=True)
     st.markdown(
-        "<p style='color: #6B6B6B; font-size: 0.95rem; margin-bottom: 24px;'>Query multi-drug combinations against pre-computed 2x2 contingency tables and live openFDA adverse event reports.</p>",
+        "<p style='color: #6B6B6B; font-size: 0.95rem; margin-bottom: 20px;'>Query multi-drug combinations against pre-computed 2x2 contingency tables and live openFDA adverse event reports.</p>",
         unsafe_allow_html=True,
     )
 
-    col_q1, col_q2 = st.columns([3, 1])
+    if "faers_query_str" not in st.session_state:
+        st.session_state["faers_query_str"] = "Warfarin, Aspirin, Ibuprofen"
+
+    st.markdown('<div class="section-eyebrow">Benchmark Combination Presets</div>', unsafe_allow_html=True)
+    f_cols = st.columns(4)
+    faers_presets = [
+        ("Triple Bleed", "Warfarin, Aspirin, Ibuprofen"),
+        ("Statin Myopathy", "Simvastatin, Amiodarone, Amlodipine"),
+        ("MTX Pancytopenia", "Methotrexate, Trimethoprim, Naproxen"),
+        ("Stent Thrombosis", "Clopidogrel, Omeprazole"),
+    ]
+    for idx, (label, combo_val) in enumerate(faers_presets):
+        with f_cols[idx]:
+            if st.button(label, key=f"faers_preset_{idx}", width="stretch"):
+                st.session_state["faers_query_str"] = combo_val
+                st.rerun()
+
+    col_q1, col_q2, col_q3 = st.columns([3.2, 1.3, 1.2])
     with col_q1:
-        query_str = st.text_input("Drug Combination (comma-separated)", value="Warfarin, Aspirin, Ibuprofen")
+        query_str = st.text_input(
+            "Drug Combination (comma-separated)",
+            value=st.session_state["faers_query_str"],
+            help="Enter two or more drug names separated by commas",
+        )
     with col_q2:
         st.markdown("<div style='height: 28px;'></div>", unsafe_allow_html=True)
         live_fda_check = st.checkbox("Query Live openFDA API", value=False)
+    with col_q3:
+        st.markdown("<div style='height: 24px;'></div>", unsafe_allow_html=True)
+        run_query_clicked = st.button("Query Signals", icon=":material/search:", width="stretch")
 
-    if query_str.strip():
-        drug_tokens = [d.strip() for d in query_str.split(",") if d.strip()]
+    if run_query_clicked:
+        st.session_state["faers_query_str"] = query_str
+
+    drug_tokens = [d.strip() for d in query_str.split(",") if d.strip()]
+    if len(drug_tokens) < 2:
+        st.error(
+            "Invalid combination query: please enter at least 2 comma-separated medication names (for example: Warfarin, Aspirin).",
+            icon=":material/error:",
+        )
+    else:
         local_sigs = db.query_signals(drug_tokens)
 
         if local_sigs:
+            st.success(
+                f"Found {len(local_sigs)} empirical FAERS disproportionality signal(s) for {', '.join(drug_tokens)}.",
+                icon=":material/check_circle:",
+            )
             sig_df = pd.DataFrame(local_sigs)
             sig_df["PRR"] = sig_df["prr"].round(2)
             sig_df["χ²"] = sig_df["chi_squared"].round(1)
@@ -1099,85 +1741,104 @@ elif menu == "FAERS Disproportionality Explorer":
             sig_df["Severity"] = sig_df["severity_tier"]
             sig_df["Signal Strength"] = sig_df["signal_strength"]
 
-            # Bella-Inspired Horizontal Bar Comparison + Volcano Plot
+            # Composable Bklit.UI Horizontal Bar + Volcano Matrix Charts
             c_chart1, c_chart2 = st.columns(2)
 
             with c_chart1:
-                st.markdown('<div class="section-eyebrow" style="margin-top: 16px;">Reporting Ratio Comparison (PRR)</div>', unsafe_allow_html=True)
-                fig_bars = px.bar(
-                    sig_df.sort_values("PRR", ascending=True),
-                    x="PRR",
-                    y="Adverse Event",
-                    orientation="h",
-                    color="Severity",
-                    color_discrete_map={
-                        "CRITICAL": "#D4A5E5",
-                        "HIGH": "#E8C840",
-                        "MODERATE": "#1B7A3D",
-                        "LOW": "#1B7A3D",
-                    },
-                    height=340,
+                bar_items = [
+                    {
+                        "label": row["Adverse Event"],
+                        "value": float(row["PRR"]),
+                        "chi2": float(row["χ²"]),
+                        "cases": int(row["Cases"]),
+                        "tier": row["Severity"],
+                    }
+                    for _, row in sig_df.sort_values("PRR", ascending=False).iterrows()
+                ]
+                bklit_bar_chart(
+                    bar_items,
+                    threshold=2.0,
+                    title="Reporting Ratio Comparison (PRR)",
+                    subtitle="Bklit.UI horizontal bars animated with motion.dev spring physics.",
+                    key=f"faers_bklit_bar_{'_'.join(drug_tokens)}",
                 )
-                fig_bars.update_layout(
-                    plot_bgcolor="#FFFFFF",
-                    paper_bgcolor="#FFFFFF",
-                    margin=dict(l=0, r=10, t=10, b=10),
-                    showlegend=False,
-                )
-                fig_bars.update_xaxes(
-                    showgrid=True,
-                    gridcolor="#E5E5E0",
-                    griddash="dot",
-                    title="Proportional Reporting Ratio (PRR)",
-                    tickfont=dict(family="Plus Jakarta Sans, sans-serif", size=11, color="#6B6B6B"),
-                )
-                fig_bars.update_yaxes(
-                    title="",
-                    showgrid=False,
-                    tickfont=dict(family="Plus Jakarta Sans, sans-serif", size=12, color="#1A1A1A"),
-                )
-                st.plotly_chart(fig_bars, width="stretch")
 
             with c_chart2:
-                st.markdown('<div class="section-eyebrow" style="margin-top: 16px;">Disproportionality Volcano Plot (PRR vs &chi;&sup2;)</div>', unsafe_allow_html=True)
-                fig_volcano = px.scatter(
-                    sig_df,
-                    x="PRR",
-                    y="χ²",
-                    size="Cases",
-                    color="Severity",
-                    hover_name="Adverse Event",
-                    color_discrete_map={
-                        "CRITICAL": "#DC2626",
-                        "HIGH": "#E8C840",
-                        "MODERATE": "#D4A5E5",
-                        "LOW": "#1B7A3D",
-                    },
-                    labels={"PRR": "Proportional Reporting Ratio (PRR)", "χ²": "Chi-Squared (χ²)"},
-                    height=340,
+                volcano_pts = [
+                    {
+                        "label": row["Adverse Event"],
+                        "prr": float(row["PRR"]),
+                        "chi2": float(row["χ²"]),
+                        "cases": int(row["Cases"]),
+                        "tier": row["Severity"],
+                    }
+                    for _, row in sig_df.iterrows()
+                ]
+                bklit_volcano_chart(
+                    volcano_pts,
+                    x_threshold=2.0,
+                    y_threshold=4.0,
+                    title="Disproportionality Volcano Plot (PRR vs χ²)",
+                    subtitle="Bklit.UI bubble matrix sized by co-reported FAERS case volume.",
+                    key=f"faers_bklit_volcano_{'_'.join(drug_tokens)}",
                 )
-                fig_volcano.add_vline(x=2.0, line_dash="dot", line_color="#6B6B6B", annotation_text="Evans PRR ≥ 2.0")
-                fig_volcano.update_xaxes(showgrid=True, gridcolor="#E5E5E0", griddash="dot")
-                fig_volcano.update_yaxes(showgrid=True, gridcolor="#E5E5E0", griddash="dot")
-                fig_volcano.update_layout(
-                    plot_bgcolor="#FFFFFF",
-                    paper_bgcolor="#FFFFFF",
-                    margin=dict(l=10, r=10, t=10, b=10),
-                    legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1, title=""),
-                )
-                st.plotly_chart(fig_volcano, width="stretch")
 
-            st.markdown('<div class="section-eyebrow" style="margin-top: 16px;">Contingency Signal Table</div>', unsafe_allow_html=True)
+            st.markdown('<div class="section-eyebrow" style="margin-top: 20px;">Contingency Signal Table</div>', unsafe_allow_html=True)
             cols_to_show = ["Adverse Event", "Severity", "PRR", "χ²", "Cases", "Signal Strength"]
             st.dataframe(sig_df[cols_to_show], hide_index=True, width="stretch")
         else:
-            st.info("No pre-computed signals in local benchmark database for this combination.")
+            st.error(
+                f"No pre-computed disproportionality signals found in the local FAERS benchmark database for: {', '.join(drug_tokens)}.",
+                icon=":material/search_off:",
+            )
 
         if live_fda_check:
             st.markdown('<div class="section-eyebrow" style="margin-top: 24px;">Live openFDA Co-Occurrence Reports</div>', unsafe_allow_html=True)
             with st.spinner("Querying openFDA endpoint..."):
                 fda_reactions = fda_client.get_combo_reactions(drug_tokens, limit=12)
                 if fda_reactions:
+                    st.success(f"Retrieved {len(fda_reactions)} live co-occurrence reaction terms from openFDA.", icon=":material/cloud_done:")
                     st.dataframe(pd.DataFrame(fda_reactions), hide_index=True, width="stretch")
                 else:
-                    st.info("No co-reported reactions returned by openFDA.")
+                    st.error("No co-reported reactions returned by live openFDA query (or endpoint offline).", icon=":material/cloud_off:")
+
+# ==============================================================================
+# EDITORIAL FOOTER (VERIFIED LINKS & DYNAMIC COPYRIGHT YEAR)
+# ==============================================================================
+current_year = date.today().year
+st.markdown(
+    f"""
+    <div class="editorial-footer">
+        <div class="footer-grid">
+            <div>
+                <a href="?workflow=discovery" target="_self" class="brand-link" style="margin-bottom: 6px;">
+                    <span class="brand-title" style="font-size: 1.25rem;">LADIP</span>
+                    <span class="brand-dot" style="width: 15px; height: 15px; font-size: 9px;">✓</span>
+                </a>
+                <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 4px;">
+                    &copy; {current_year} LADIP — Longitudinal Adverse Drug Interaction Predictor. All rights reserved.
+                </div>
+            </div>
+            <div>
+                <div class="section-eyebrow" style="margin-bottom: 8px;">Clinical Modules</div>
+                <div class="footer-links">
+                    <a href="?workflow=discovery" target="_self">Interaction Discovery</a>
+                    <a href="?workflow=safety" target="_self">Prospective Safety Check</a>
+                    <a href="?workflow=ehr" target="_self">Patient EHR &amp; OCR</a>
+                    <a href="?workflow=faers" target="_self">FAERS Signal Explorer</a>
+                </div>
+            </div>
+            <div>
+                <div class="section-eyebrow" style="margin-bottom: 8px;">Standards &amp; References</div>
+                <div class="footer-links">
+                    <a href="https://open.fda.gov/apis/drug/event/" target="_blank" rel="noopener noreferrer">FDA FAERS API</a>
+                    <a href="https://lhncbc.nlm.nih.gov/RxNav/" target="_blank" rel="noopener noreferrer">NIH RxNorm</a>
+                    <a href="https://www.meddra.org/" target="_blank" rel="noopener noreferrer">MedDRA Ontology</a>
+                    <a href="https://www.ncbi.nlm.nih.gov/books/NBK548069/" target="_blank" rel="noopener noreferrer">Naranjo Scale</a>
+                </div>
+            </div>
+        </div>
+    </div>
+    """,
+    unsafe_allow_html=True,
+)

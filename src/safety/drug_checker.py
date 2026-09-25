@@ -126,19 +126,19 @@ class DrugSafetyChecker:
 
         if allergy_flags or (has_critical_signal and any(c["prr"] >= 3.0 for c in flagged_combos)):
             status = "CRITICAL_CONTRAINDICATION"
-            color = "#D32F2F"  # Red
+            color = "#DC2626"  # Editorial Coral
             rec = f"CONTRAINDICATED: Do NOT initiate {new_drug_name}. Critical safety signals or documented allergies present."
         elif has_high_signal or len(flagged_combos) >= 3:
             status = "HIGH_RISK"
-            color = "#E65100"  # Orange
+            color = "#E8C840"  # Editorial Gold
             rec = f"HIGH RISK: Significant pharmacovigilance signals identified. Consider safer therapeutic alternative or intense clinical monitoring."
         elif flagged_combos:
             status = "MODERATE_RISK"
-            color = "#F57C00"  # Amber
+            color = "#D4A5E5"  # Editorial Lavender
             rec = f"CAUTION: Potential interactions noted. Adjust dosing schedule or monitor clinical parameters (e.g. labs, symptoms)."
         else:
             status = "LOW_RISK_COMPATIBLE"
-            color = "#388E3C"  # Green
+            color = "#1B7A3D"  # Editorial Forest Green
             rec = f"COMPATIBLE: No known high-confidence FAERS disproportionality or allergic contraindications detected."
 
         return DrugSafetyAssessment(

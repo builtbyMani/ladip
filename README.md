@@ -5,7 +5,7 @@
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.110+-009688.svg?logo=fastapi)](https://fastapi.tiangolo.com)
 [![Streamlit](https://img.shields.io/badge/Streamlit-1.32+-FF4B4B.svg?logo=streamlit)](https://streamlit.io)
 [![Expo](https://img.shields.io/badge/Expo%20Go-SDK%2050+-000020.svg?logo=expo)](https://expo.dev)
-[![Tests Passing](https://img.shields.io/badge/tests-15%2F15%20passing-brightgreen.svg)]()
+[![Tests Passing](https://img.shields.io/badge/tests-24%2F24%20passing-brightgreen.svg)](#3-run-automated-tests)
 
 > **A longitudinal, multi-drug pharmacovigilance system combining real-world FDA FAERS adverse event data with patient medication timelines to detect hidden drug-drug-symptom interactions while eliminating Clinical Alert Fatigue.**
 
@@ -27,7 +27,7 @@ In modern Electronic Health Record (EHR) systems, **90% to 96% of drug interacti
 ```
                                   +------------------------------------+
                                   |     Clinician Web Dashboard        |
-                                  |      (Streamlit - Dark Mode)       |
+                                  |  (Streamlit + Bklit.UI + Motion)   |
                                   +-----------------+------------------+
                                                     |
                                                     v
@@ -68,8 +68,10 @@ In modern Electronic Health Record (EHR) systems, **90% to 96% of drug interacti
 vnrvjeit/
 ├── src/
 │   ├── config.py                 # Configuration, thresholds, and paths
-│   ├── app.py                    # Streamlit clinical decision dashboard (Dark theme)
+│   ├── app.py                    # Streamlit clinical decision dashboard (Editorial theme)
 │   ├── api.py                    # FastAPI REST server for web & mobile clients
+│   ├── components/
+│   │   └── bklit_charts.py       # Composable Bklit.UI charts & Motion.dev animations (CCv2)
 │   ├── normalization/
 │   │   └── rxnorm.py             # RxNorm REST API & brand-to-generic mapper
 │   ├── faers/
@@ -91,11 +93,12 @@ vnrvjeit/
 │       └── pharmacology.py       # Gemini AI & rule-based physiological rationale
 ├── mobile/                       # React Native / Expo Go Patient Mobile App
 │   ├── App.js                    # Cross-platform patient portal & timeline viewer
-│   ├── app.json                  # Expo project metadata & camera permissions
-│   ├── package.json              # Mobile dependencies (expo-camera, lucide-react-native)
+│   ├── app.json                  # Expo project metadata, favicon & camera permissions
+│   ├── package.json              # Mobile dependencies
 │   └── src/
-│       ├── api.js                # Mobile client API bridge
-│       └── components/           # Patient card, interaction timeline & prescription scanner
+│       ├── api/client.js         # Mobile client API bridge with offline clinical fallback
+│       ├── components/           # Header, Footer, BklitChart & MotionView spring physics
+│       └── screens/              # Schedule, DrugChecker, Scanner, Profile & NotFound (404)
 ├── scripts/
 │   ├── build_signal_db.py        # Seed local SQLite database with benchmark signals
 │   ├── generate_synthetic_patients.py # Generate realistic clinical test profiles
@@ -104,13 +107,13 @@ vnrvjeit/
 │   ├── test_disproportionality.py# Verified against hand-calculated 2x2 tables
 │   ├── test_temporal.py          # Validates DTAS & Naranjo scoring
 │   ├── test_signal_matcher.py    # Validates alert priority & suppression rules
-│   └── test_api.py               # Complete FastAPI endpoint test suite
+│   └── test_api.py               # Complete FastAPI & UI test suite
 ├── data/
 │   ├── faers.db                  # Pre-seeded SQLite database with 16 benchmark signals
 │   └── patients/                 # Realistic Indian patient cohort JSON files
 ├── requirements.txt              # Backend dependencies
 ├── .env.example                  # Environment configuration template
-├── LICENSE                       # MIT Open Source License
+├── LICENSE                       # MIT Open Source License (© 2026 LADIP Contributors)
 └── README.md
 ```
 
@@ -165,8 +168,7 @@ LADIP includes pre-configured realistic clinical test profiles showcasing comple
 
 ### 2. Installation
 ```bash
-# Clone the repository
-git clone https://github.com/<your-username>/<your-repo-name>.git
+# Enter the project workspace
 cd vnrvjeit
 
 # Set up Python virtual environment
@@ -181,11 +183,10 @@ cp .env.example .env
 ```
 
 ### 3. Run Automated Tests
-Verify mathematical engines and API endpoints:
+Verify mathematical engines, UI components, and API endpoints:
 ```bash
 python3 -m pytest tests/ -v
 ```
-*(All 15 unit and integration tests should pass)*
 
 ### 4. Start the FastAPI REST Backend
 ```bash
@@ -199,7 +200,7 @@ uvicorn src.api:app --reload --port 8000
 streamlit run src/app.py
 ```
 - Opens in your browser at `http://localhost:8501`
-- Includes interactive medication timeline, prospective "Add Drug" simulator, and PDF report parser.
+- Includes interactive Bklit.UI medication timeline & volcano plots, Motion.dev spring animations, prospective "Add Drug" simulator, and PDF/image report parser.
 
 ### 6. Launch Mobile Patient App (Expo Go)
 In a new terminal window:
@@ -217,16 +218,19 @@ npx expo start
 
 | Method | Endpoint | Description |
 |---|---|---|
-| `GET` | `/` | API status and available module links |
-| `GET` | `/api/patients` | List all patient profiles in the registry |
-| `GET` | `/api/patients/{patient_id}` | Retrieve patient profile, timeline, and current medications |
-| `GET` | `/api/patients/{patient_id}/analysis` | Compute multi-drug disproportionality, DTAS, and alert priorities |
-| `POST` | `/api/patients/{patient_id}/check-drug` | Prospective drug safety check: simulate adding a new medication |
-| `POST` | `/api/patients/{patient_id}/scan` | Upload physical prescription/report image (Base64) for OCR parsing |
-| `POST` | `/api/simulate` | Ad-hoc prospective simulation for arbitrary drug combinations |
+| `GET` | `/` | API portal status, copyright metadata, and module links |
+| `GET` | `/api/v1/health` | Service health check and FAERS database statistics |
+| `GET` | `/api/v1/patients` | List all patient profiles in the clinical cohort registry |
+| `GET` | `/api/v1/patients/{patient_id}` | Retrieve complete patient EHR, timeline, and current medications |
+| `GET` | `/api/v1/patients/{patient_id}/schedule` | Retrieve daily dosing schedule slots (Morning, Afternoon, Evening, Bedtime) |
+| `GET` | `/api/v1/patients/{patient_id}/alerts` | Compute multi-drug disproportionality, DTAS, and alert priorities |
+| `POST` | `/api/v1/patients/{patient_id}/check-drug` | Prospective drug safety check: simulate adding a new medication |
+| `POST` | `/api/v1/patients/{patient_id}/scan-report` | Upload prescription/report file or text for OCR timeline extraction |
+| `POST` | `/api/v1/patients/{patient_id}/scan-base64` | Upload base64-encoded prescription image from mobile camera |
+| `POST` | `/api/v1/simulate` | Ad-hoc prospective simulation for arbitrary drug combinations |
 
 ---
 
 ## 🛡️ License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License — Copyright &copy; 2026 LADIP Contributors. See the [LICENSE](LICENSE) file for details.
