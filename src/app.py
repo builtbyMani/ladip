@@ -78,15 +78,6 @@ PAGE_META = {
 }
 
 FAVICON_PATH = Path(__file__).resolve().parent / "assets" / "favicon.png"
-FAVICON_SVG_DATA_URI = (
-    "data:image/svg+xml;utf8,"
-    "<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>"
-    "<rect width='64' height='64' rx='16' fill='%231A1A1A'/>"
-    "<text x='14' y='46' font-family='Georgia,serif' font-weight='900' font-size='38' fill='%23FFFFFF'>L</text>"
-    "<circle cx='46' cy='20' r='10' fill='%23D4A5E5'/>"
-    "<path d='M41.5 20.2L44.6 23.3L50.8 17.1' stroke='%231A1A1A' stroke-width='2.5' fill='none'/>"
-    "</svg>"
-)
 
 # Resolve initial page title from query params before st.set_page_config
 _qp_workflow = st.query_params.get("workflow", "")
@@ -106,472 +97,431 @@ st.set_page_config(
 # ==============================================================================
 # EDITORIAL HEALTH-TECH DESIGN SYSTEM (BELLA-INSPIRED, MOBILE-OPTIMIZED, NO OVERFLOW)
 # ==============================================================================
-st.markdown(
-    f"""
-    <link rel="icon" type="image/svg+xml" href="{FAVICON_SVG_DATA_URI}" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0" />
-    <meta name="theme-color" content="#FFFFFF" />
-    <style>
-    @import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
-
-    :root {{
-        --surface: #FFFFFF;
-        --surface-muted: #F5F5F0;
-        --ink: #1A1A1A;
-        --ink-muted: #6B6B6B;
-        --border: #E5E5E0;
-        --accent-green: #1B7A3D;
-        --accent-lavender: #D4A5E5;
-        --accent-gold: #E8C840;
-        --accent-coral: #DC2626;
-        --cta-bg: #1A1A1A;
-        --chart-1: #1A1A1A;
-        --chart-2: #D4A5E5;
-        --chart-3: #DC2626;
-        --chart-4: #1B7A3D;
-        --chart-5: #E8C840;
-    }}
-
-    /* Eliminate Horizontal Scrolling & Mobile Overflow Globally */
-    html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main {{
-        font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
-        color: var(--ink);
-        background-color: var(--surface);
-        overflow-x: hidden !important;
-        max-width: 100vw !important;
-        box-sizing: border-box !important;
-    }}
-
-    *, *::before, *::after {{
-        box-sizing: border-box;
-    }}
-
-    /* Remove Unused Streamlit Chrome Navigation */
-    #MainMenu,
-    .stDeployButton,
-    [data-testid="stToolbarActions"],
-    footer {{
-        display: none !important;
-    }}
-
-    .main .block-container {{
-        max-width: 1180px;
-        width: 100%;
-        padding-top: 2rem;
-        padding-bottom: 3.5rem;
-        padding-left: 2rem;
-        padding-right: 2rem;
-        overflow-x: hidden !important;
-    }}
-
-    code, pre, .mono-val {{
-        font-family: 'JetBrains Mono', monospace !important;
-        font-size: 0.9em;
-        background: var(--surface-muted) !important;
-        color: var(--ink) !important;
-        padding: 2px 6px;
-        border-radius: 4px;
-        word-break: break-word;
-    }}
-
-    /* Sidebar Editorial Styling */
-    [data-testid="stSidebar"] {{
-        background-color: var(--surface) !important;
-        border-right: 1px solid var(--border) !important;
-    }}
-    [data-testid="stSidebar"] .block-container {{
-        padding-top: 1.75rem;
-    }}
-
-    /* Remove shadows & style native containers */
-    [data-testid="stVerticalBlockBorderWrapper"] {{
-        border: 1px solid var(--border) !important;
-        border-radius: 0px !important;
-        box-shadow: none !important;
-        background-color: var(--surface) !important;
-        padding: 20px !important;
-    }}
-
-    /* Black Pill CTA Buttons */
-    .stButton > button, .stFormSubmitButton > button {{
-        background-color: var(--cta-bg) !important;
-        color: #FFFFFF !important;
-        border: 1px solid var(--cta-bg) !important;
-        border-radius: 9999px !important;
-        padding: 0.58rem 1.5rem !important;
-        font-family: 'Plus Jakarta Sans', sans-serif !important;
-        font-weight: 600 !important;
-        font-size: 0.86rem !important;
-        letter-spacing: -0.01em !important;
-        box-shadow: none !important;
-        transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease !important;
-        max-width: 100%;
-        white-space: normal !important;
-    }}
-    .stButton > button:hover, .stFormSubmitButton > button:hover {{
-        opacity: 0.88 !important;
-        transform: translateY(-1px) !important;
-    }}
-    .stButton > button:active, .stFormSubmitButton > button:active {{
-        transform: scale(0.98) !important;
-    }}
-
-    /* Clickable Editorial Brand Mark */
-    a.brand-link {{
-        text-decoration: none !important;
-        color: inherit !important;
-        display: inline-flex;
-        align-items: center;
-        gap: 8px;
-        cursor: pointer;
-        transition: opacity 0.15s ease;
-    }}
-    a.brand-link:hover {{
-        opacity: 0.8;
-    }}
-    .brand-row {{
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        flex-wrap: wrap;
-        gap: 8px;
-        margin-bottom: 16px;
-    }}
-    .brand-title {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-weight: 700;
-        font-size: 1.65rem;
-        color: var(--ink);
-        letter-spacing: -0.02em;
-        line-height: 1;
-    }}
-    .brand-dot {{
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 18px;
-        height: 18px;
-        border-radius: 50%;
-        background-color: var(--accent-lavender);
-        color: #1A1A1A;
-        font-size: 10px;
-        font-weight: 800;
-    }}
-
-    /* Star Credibility Line */
-    .credibility-line {{
-        font-size: 0.85rem;
-        color: var(--ink);
-        margin-bottom: 14px;
-        display: flex;
-        flex-wrap: wrap;
-        align-items: center;
-        gap: 6px;
-    }}
-    .gold-star {{
-        color: var(--accent-gold);
-        font-size: 1rem;
-    }}
-
-    /* Editorial Hero Section */
-    .editorial-hero {{
-        background: var(--surface);
-        border-bottom: 1px solid var(--border);
-        padding: 4px 0 30px 0;
-        margin-bottom: 28px;
-    }}
-    .editorial-headline {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-weight: 700;
-        font-size: clamp(1.85rem, 4vw, 2.85rem);
-        line-height: 1.08;
-        letter-spacing: -0.025em;
-        color: var(--ink);
-        margin: 0 0 16px 0;
-        max-width: 680px;
-        word-break: break-word;
-    }}
-    .editorial-subtext {{
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: clamp(0.92rem, 1.5vw, 1rem);
-        line-height: 1.6;
-        color: var(--ink-muted);
-        max-width: 580px;
-        margin: 0;
-    }}
-
-    /* Patient Editorial Strip */
-    .patient-serif-name {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-weight: 700;
-        font-size: clamp(1.45rem, 3vw, 1.85rem);
-        color: var(--ink);
-        letter-spacing: -0.02em;
-        margin: 0 0 6px 0;
-        word-break: break-word;
-    }}
-    .patient-meta {{
-        font-size: 0.85rem;
-        color: var(--ink-muted);
-        margin-bottom: 12px;
-        word-break: break-word;
-    }}
-    .section-eyebrow {{
-        font-size: 0.72rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--ink-muted);
-        margin-bottom: 6px;
-    }}
-
-    /* Oversized Stat Callouts */
-    .stat-callout {{
-        padding: 8px 0;
-    }}
-    .stat-number {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-weight: 900;
-        font-size: clamp(2.1rem, 4.2vw, 3.3rem);
-        line-height: 1.0;
-        letter-spacing: -0.03em;
-        color: var(--ink);
-        margin: 0 0 8px 0;
-    }}
-    .stat-label {{
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: 0.72rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--ink-muted);
-        margin: 0;
-    }}
-
-    /* Outlined Severity Badges */
-    .badge-critical {{
-        display: inline-block;
-        background: transparent;
-        color: var(--accent-coral);
-        border: 1px solid var(--accent-coral);
-        padding: 3px 10px;
-        border-radius: 9999px;
-        font-weight: 700;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }}
-    .badge-high {{
-        display: inline-block;
-        background: transparent;
-        color: #B48A00;
-        border: 1px solid var(--accent-gold);
-        padding: 3px 10px;
-        border-radius: 9999px;
-        font-weight: 700;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }}
-    .badge-moderate {{
-        display: inline-block;
-        background: transparent;
-        color: var(--ink-muted);
-        border: 1px solid var(--border);
-        padding: 3px 10px;
-        border-radius: 9999px;
-        font-weight: 700;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }}
-    .badge-low {{
-        display: inline-block;
-        background: transparent;
-        color: var(--accent-green);
-        border: 1px solid var(--accent-green);
-        padding: 3px 10px;
-        border-radius: 9999px;
-        font-weight: 700;
-        font-size: 0.7rem;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-    }}
-
-    /* Editorial Alert Row */
-    .alert-row {{
-        border-top: 1px solid var(--border);
-        padding: 24px 0 18px 0;
-    }}
-    .alert-headline {{
-        font-family: 'Plus Jakarta Sans', sans-serif;
-        font-size: clamp(1.02rem, 2vw, 1.18rem);
-        font-weight: 700;
-        color: var(--ink);
-        letter-spacing: -0.01em;
-        margin: 0 0 12px 0;
-        word-break: break-word;
-    }}
-    .alert-score-num {{
-        font-family: 'Playfair Display', Georgia, serif;
-        font-weight: 900;
-        font-size: clamp(1.75rem, 3vw, 2.25rem);
-        line-height: 1;
-        letter-spacing: -0.03em;
-        color: var(--ink);
-    }}
-    .alert-score-caption {{
-        font-size: 0.68rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.08em;
-        color: var(--ink-muted);
-        margin-top: 4px;
-    }}
-
-    /* Black Pill Drug Tags & Outlined Symptom Tags */
-    .drug-pill {{
-        display: inline-block;
-        background: var(--cta-bg);
-        color: #FFFFFF;
-        padding: 4px 12px;
-        border-radius: 9999px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        max-width: 100%;
-        word-break: break-word;
-    }}
-    .symptom-pill {{
-        display: inline-block;
-        background: transparent;
-        color: var(--accent-coral);
-        border: 1px solid var(--accent-coral);
-        padding: 3px 11px;
-        border-radius: 9999px;
-        font-size: 0.78rem;
-        font-weight: 600;
-        margin-right: 6px;
-        margin-bottom: 6px;
-        max-width: 100%;
-        word-break: break-word;
-    }}
-
-    /* Editorial Inline Banners (Success & Error Messages) */
-    .editorial-banner-success {{
-        border: 1px solid var(--accent-green);
-        border-left: 4px solid var(--accent-green);
-        background: var(--surface);
-        padding: 14px 18px;
-        margin: 14px 0;
-        font-size: 0.88rem;
-        color: var(--ink);
-    }}
-    .editorial-banner-error {{
-        border: 1px solid var(--accent-coral);
-        border-left: 4px solid var(--accent-coral);
-        background: var(--surface);
-        padding: 14px 18px;
-        margin: 14px 0;
-        font-size: 0.88rem;
-        color: var(--ink);
-    }}
-
-    /* Suppressed Alert Editorial Bar */
-    .suppressed-row {{
-        border-left: 3px solid var(--accent-green);
-        padding: 10px 0 10px 16px;
-        margin-bottom: 14px;
-    }}
-
-    /* Evidence Metric Cell */
-    .evidence-label {{
-        font-size: 0.7rem;
-        font-weight: 600;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--ink-muted);
-        margin-bottom: 2px;
-    }}
-    .evidence-val {{
-        font-family: 'JetBrains Mono', monospace;
-        font-size: 1.05rem;
-        font-weight: 500;
-        color: var(--ink);
-        word-break: break-word;
-    }}
-    .evidence-sub {{
-        font-size: 0.76rem;
-        color: var(--ink-muted);
-    }}
-
-    /* Editorial Footer */
-    .editorial-footer {{
-        border-top: 1px solid var(--border);
-        margin-top: 48px;
-        padding-top: 28px;
-        padding-bottom: 16px;
-        font-size: 0.82rem;
-        color: var(--ink-muted);
-    }}
-    .footer-grid {{
-        display: flex;
-        flex-wrap: wrap;
-        justify-content: space-between;
-        gap: 24px;
+_EDITORIAL_CSS = """<style>
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+:root {
+    --surface: #FFFFFF;
+    --surface-muted: #F5F5F0;
+    --ink: #1A1A1A;
+    --ink-muted: #6B6B6B;
+    --border: #E5E5E0;
+    --accent-green: #1B7A3D;
+    --accent-lavender: #D4A5E5;
+    --accent-gold: #E8C840;
+    --accent-coral: #DC2626;
+    --cta-bg: #1A1A1A;
+    --chart-1: #1A1A1A;
+    --chart-2: #D4A5E5;
+    --chart-3: #DC2626;
+    --chart-4: #1B7A3D;
+    --chart-5: #E8C840;
+}
+html, body, .stApp, [data-testid="stAppViewContainer"], [data-testid="stMain"], .main {
+    font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+    color: var(--ink);
+    background-color: var(--surface);
+    overflow-x: hidden !important;
+    max-width: 100vw !important;
+    box-sizing: border-box !important;
+}
+*, *::before, *::after {
+    box-sizing: border-box;
+}
+#MainMenu,
+.stDeployButton,
+[data-testid="stToolbarActions"],
+[data-testid="stAppDeployButton"],
+footer {
+    display: none !important;
+}
+.main .block-container {
+    max-width: 1180px;
+    width: 100%;
+    padding-top: 2rem;
+    padding-bottom: 3.5rem;
+    padding-left: 2rem;
+    padding-right: 2rem;
+    overflow-x: hidden !important;
+}
+code, pre, .mono-val {
+    font-family: 'JetBrains Mono', monospace !important;
+    font-size: 0.9em;
+    background: var(--surface-muted) !important;
+    color: var(--ink) !important;
+    padding: 2px 6px;
+    border-radius: 4px;
+    word-break: break-word;
+}
+[data-testid="stSidebar"] {
+    background-color: var(--surface) !important;
+    border-right: 1px solid var(--border) !important;
+}
+[data-testid="stSidebar"] .block-container {
+    padding-top: 1.75rem;
+}
+[data-testid="stVerticalBlockBorderWrapper"] {
+    border: 1px solid var(--border) !important;
+    border-radius: 0px !important;
+    box-shadow: none !important;
+    background-color: var(--surface) !important;
+    padding: 20px !important;
+}
+.stButton > button, .stFormSubmitButton > button {
+    background-color: var(--cta-bg) !important;
+    color: #FFFFFF !important;
+    border: 1px solid var(--cta-bg) !important;
+    border-radius: 9999px !important;
+    padding: 0.58rem 1.5rem !important;
+    font-family: 'Plus Jakarta Sans', sans-serif !important;
+    font-weight: 600 !important;
+    font-size: 0.86rem !important;
+    letter-spacing: -0.01em !important;
+    box-shadow: none !important;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.18s ease !important;
+    max-width: 100%;
+    white-space: normal !important;
+}
+.stButton > button:hover, .stFormSubmitButton > button:hover {
+    opacity: 0.88 !important;
+    transform: translateY(-1px) !important;
+}
+.stButton > button:active, .stFormSubmitButton > button:active {
+    transform: scale(0.98) !important;
+}
+.stMarkdown a.brand-link, [data-testid="stSidebar"] a.brand-link, a.brand-link {
+    text-decoration: none !important;
+    color: var(--ink) !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    gap: 8px !important;
+    cursor: pointer;
+    transition: opacity 0.15s ease;
+    border-bottom: none !important;
+}
+a.brand-link:hover {
+    opacity: 0.8;
+    text-decoration: none !important;
+}
+.brand-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 16px;
+}
+.brand-title {
+    font-family: 'Playfair Display', Georgia, serif !important;
+    font-weight: 700 !important;
+    font-size: 1.65rem !important;
+    color: var(--ink) !important;
+    letter-spacing: -0.02em;
+    line-height: 1;
+    text-decoration: none !important;
+}
+.brand-dot {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    background-color: var(--accent-lavender);
+    color: #1A1A1A !important;
+    font-size: 10px;
+    font-weight: 800;
+    text-decoration: none !important;
+}
+.credibility-line {
+    font-size: 0.85rem;
+    color: var(--ink);
+    margin-bottom: 14px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+.gold-star {
+    color: var(--accent-gold);
+    font-size: 1rem;
+}
+.editorial-hero {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 4px 0 30px 0;
+    margin-bottom: 28px;
+}
+.editorial-headline {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(1.85rem, 4vw, 2.85rem);
+    line-height: 1.08;
+    letter-spacing: -0.025em;
+    color: var(--ink);
+    margin: 0 0 16px 0;
+    max-width: 680px;
+    word-break: break-word;
+}
+.editorial-subtext {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(0.92rem, 1.5vw, 1rem);
+    line-height: 1.6;
+    color: var(--ink-muted);
+    max-width: 580px;
+    margin: 0;
+}
+.patient-serif-name {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 700;
+    font-size: clamp(1.45rem, 3vw, 1.85rem);
+    color: var(--ink);
+    letter-spacing: -0.02em;
+    margin: 0 0 6px 0;
+    word-break: break-word;
+}
+.patient-meta {
+    font-size: 0.85rem;
+    color: var(--ink-muted);
+    margin-bottom: 12px;
+    word-break: break-word;
+}
+.section-eyebrow {
+    font-size: 0.72rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-bottom: 6px;
+}
+.stat-callout {
+    padding: 8px 0;
+}
+.stat-number {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900;
+    font-size: clamp(2.1rem, 4.2vw, 3.3rem);
+    line-height: 1.0;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+    margin: 0 0 8px 0;
+}
+.stat-label {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin: 0;
+}
+.badge-critical {
+    display: inline-block;
+    background: transparent;
+    color: var(--accent-coral);
+    border: 1px solid var(--accent-coral);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.badge-high {
+    display: inline-block;
+    background: transparent;
+    color: #B48A00;
+    border: 1px solid var(--accent-gold);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.badge-moderate {
+    display: inline-block;
+    background: transparent;
+    color: var(--ink-muted);
+    border: 1px solid var(--border);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.badge-low {
+    display: inline-block;
+    background: transparent;
+    color: var(--accent-green);
+    border: 1px solid var(--accent-green);
+    padding: 3px 10px;
+    border-radius: 9999px;
+    font-weight: 700;
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+}
+.alert-row {
+    border-top: 1px solid var(--border);
+    padding: 24px 0 18px 0;
+}
+.alert-headline {
+    font-family: 'Plus Jakarta Sans', sans-serif;
+    font-size: clamp(1.02rem, 2vw, 1.18rem);
+    font-weight: 700;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    margin: 0 0 12px 0;
+    word-break: break-word;
+}
+.alert-score-num {
+    font-family: 'Playfair Display', Georgia, serif;
+    font-weight: 900;
+    font-size: clamp(1.75rem, 3vw, 2.25rem);
+    line-height: 1;
+    letter-spacing: -0.03em;
+    color: var(--ink);
+}
+.alert-score-caption {
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--ink-muted);
+    margin-top: 4px;
+}
+.drug-pill {
+    display: inline-block;
+    background: var(--cta-bg);
+    color: #FFFFFF;
+    padding: 4px 12px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    max-width: 100%;
+    word-break: break-word;
+}
+.symptom-pill {
+    display: inline-block;
+    background: transparent;
+    color: var(--accent-coral);
+    border: 1px solid var(--accent-coral);
+    padding: 3px 11px;
+    border-radius: 9999px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    margin-right: 6px;
+    margin-bottom: 6px;
+    max-width: 100%;
+    word-break: break-word;
+}
+.editorial-banner-success {
+    border: 1px solid var(--accent-green);
+    border-left: 4px solid var(--accent-green);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size: 0.88rem;
+    color: var(--ink);
+}
+.editorial-banner-error {
+    border: 1px solid var(--accent-coral);
+    border-left: 4px solid var(--accent-coral);
+    background: var(--surface);
+    padding: 14px 18px;
+    margin: 14px 0;
+    font-size: 0.88rem;
+    color: var(--ink);
+}
+.suppressed-row {
+    border-left: 3px solid var(--accent-green);
+    padding: 10px 0 10px 16px;
+    margin-bottom: 14px;
+}
+.evidence-label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--ink-muted);
+    margin-bottom: 2px;
+}
+.evidence-val {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 1.05rem;
+    font-weight: 500;
+    color: var(--ink);
+    word-break: break-word;
+}
+.evidence-sub {
+    font-size: 0.76rem;
+    color: var(--ink-muted);
+}
+.editorial-footer {
+    border-top: 1px solid var(--border);
+    margin-top: 48px;
+    padding-top: 28px;
+    padding-bottom: 16px;
+    font-size: 0.82rem;
+    color: var(--ink-muted);
+}
+.footer-grid {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 24px;
+    margin-bottom: 20px;
+}
+.footer-links {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: center;
+}
+.footer-links a {
+    color: var(--ink) !important;
+    text-decoration: none !important;
+    font-weight: 600;
+    border-bottom: 1px solid transparent;
+    transition: border-color 0.15s ease;
+}
+.footer-links a:hover {
+    border-bottom-color: var(--ink);
+}
+@media (max-width: 768px) {
+    .main .block-container {
+        padding-left: 1rem !important;
+        padding-right: 1rem !important;
+        padding-top: 1.25rem !important;
+    }
+    [data-testid="stHorizontalBlock"] {
+        flex-direction: column !important;
+        gap: 0.75rem !important;
+    }
+    [data-testid="column"], [data-testid="stColumn"] {
+        width: 100% !important;
+        flex: 1 1 100% !important;
+        min-width: 0 !important;
+    }
+    .editorial-hero {
+        padding-bottom: 20px;
         margin-bottom: 20px;
-    }}
-    .footer-links {{
-        display: flex;
-        flex-wrap: wrap;
-        gap: 16px;
-        align-items: center;
-    }}
-    .footer-links a {{
-        color: var(--ink) !important;
-        text-decoration: none !important;
-        font-weight: 600;
-        border-bottom: 1px solid transparent;
-        transition: border-color 0.15s ease;
-    }}
-    .footer-links a:hover {{
-        border-bottom-color: var(--ink);
-    }}
+    }
+    .stat-callout {
+        border-bottom: 1px solid var(--surface-muted);
+        padding: 10px 0;
+    }
+    .footer-grid {
+        flex-direction: column;
+        gap: 14px;
+    }
+}
+</style>"""
 
-    /* Mobile Optimization & Responsive Breakpoints */
-    @media (max-width: 768px) {{
-        .main .block-container {{
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            padding-top: 1.25rem !important;
-        }}
-        [data-testid="stHorizontalBlock"] {{
-            flex-direction: column !important;
-            gap: 0.75rem !important;
-        }}
-        [data-testid="column"], [data-testid="stColumn"] {{
-            width: 100% !important;
-            flex: 1 1 100% !important;
-            min-width: 0 !important;
-        }}
-        .editorial-hero {{
-            padding-bottom: 20px;
-            margin-bottom: 20px;
-        }}
-        .stat-callout {{
-            border-bottom: 1px solid var(--surface-muted);
-            padding: 10px 0;
-        }}
-        .footer-grid {{
-            flex-direction: column;
-            gap: 14px;
-        }}
-    }}
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
+st.markdown(_EDITORIAL_CSS, unsafe_allow_html=True)
 
 
 @st.cache_resource
@@ -726,17 +676,13 @@ def _on_recover_home():
 # ==============================================================================
 with st.sidebar:
     st.markdown(
-        """
-        <div class="brand-row" style="margin-bottom: 6px;">
-            <a href="?workflow=discovery" target="_self" class="brand-link" title="Return to Multi-Drug Interaction Discovery">
-                <span class="brand-title">LADIP</span>
-                <span class="brand-dot">✓</span>
-            </a>
-        </div>
-        <div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 20px;">
-            Longitudinal Pharmacovigilance &amp; Causality Engine
-        </div>
-        """,
+        """<div class="brand-row" style="margin-bottom: 6px;">
+<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#1A1A1A; display:inline-flex; align-items:center; gap:8px;" title="Return to Multi-Drug Interaction Discovery">
+<span class="brand-title" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.65rem; color:#1A1A1A; text-decoration:none;">LADIP</span>
+<span class="brand-dot" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background-color:#D4A5E5; color:#1A1A1A; font-size:10px; font-weight:800; text-decoration:none;">✓</span>
+</a>
+</div>
+<div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 20px;">Longitudinal Pharmacovigilance &amp; Causality Engine</div>""",
         unsafe_allow_html=True,
     )
 
@@ -764,12 +710,10 @@ with st.sidebar:
 
     st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0;'/>", unsafe_allow_html=True)
     st.markdown(
-        """
-        <div style="font-size: 0.78rem; color: #6B6B6B; line-height: 1.5;">
-            <b style="color: #1A1A1A;">Clinical Benchmark Note</b><br/>
-            Select <b>Rajesh Varma</b> to observe how longitudinal stability (&gt;6 months symptom-free) suppresses low-value background alerts.
-        </div>
-        """,
+        """<div style="font-size: 0.78rem; color: #6B6B6B; line-height: 1.5;">
+<b style="color: #1A1A1A;">Clinical Benchmark Note</b><br/>
+Select <b>Rajesh Varma</b> to observe how longitudinal stability (&gt;6 months symptom-free) suppresses low-value background alerts.
+</div>""",
         unsafe_allow_html=True,
     )
 
@@ -789,12 +733,10 @@ dynamic_doc_title = (
 )
 
 st.markdown(
-    f"""
-    <meta name="description" content="{active_meta['description']}" />
-    <meta property="og:title" content="{dynamic_doc_title}" />
-    <meta property="og:description" content="{active_meta['description']}" />
-    <meta property="og:type" content="website" />
-    """,
+    f"""<meta name="description" content="{active_meta['description']}" />
+<meta property="og:title" content="{dynamic_doc_title}" />
+<meta property="og:description" content="{active_meta['description']}" />
+<meta property="og:type" content="website" />""",
     unsafe_allow_html=True,
 )
 
@@ -835,31 +777,25 @@ st.html(
 # MOBILE NAVIGATION MENU & EDITORIAL HERO HEADER
 # ==============================================================================
 st.markdown(
-    """
-    <div class="editorial-hero">
-        <div class="brand-row">
-            <a href="?workflow=discovery" target="_self" class="brand-link" title="Click to return to Multi-Drug Interaction Discovery">
-                <span class="brand-title">LADIP</span>
-                <span class="brand-dot">✓</span>
-            </a>
-            <span style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6B6B6B;">
-                Clinical Decision Support v2.0
-            </span>
-        </div>
-        <div class="credibility-line">
-            <span class="gold-star">★</span>
-            <span><b>16 Benchmark Signals</b> &nbsp;•&nbsp; <b>5 Clinical Cohorts</b> &nbsp;•&nbsp; <b>FAERS 2x2 Disproportionality</b></span>
-        </div>
-        <h1 class="editorial-headline">
-            Temporal Pharmacovigilance<br/>
-            That Actually Stops<br/>
-            Alert Fatigue.
-        </h1>
-        <p class="editorial-subtext">
-            Combining real-world FDA adverse event reporting ratios with patient-specific medication timelines to surface only the interactions that demand clinical action.
-        </p>
-    </div>
-    """,
+    """<div class="editorial-hero" style="background:#FFFFFF; border-bottom:1px solid #E5E5E0; padding:4px 0 30px 0; margin-bottom:28px;">
+<div class="brand-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
+<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#1A1A1A; display:inline-flex; align-items:center; gap:8px;" title="Click to return to Multi-Drug Interaction Discovery">
+<span class="brand-title" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.65rem; color:#1A1A1A; text-decoration:none;">LADIP</span>
+<span class="brand-dot" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background-color:#D4A5E5; color:#1A1A1A; font-size:10px; font-weight:800; text-decoration:none;">✓</span>
+</a>
+<span style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6B6B6B;">Clinical Decision Support v2.0</span>
+</div>
+<div class="credibility-line" style="font-size:0.85rem; color:#1A1A1A; margin-bottom:14px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
+<span class="gold-star" style="color:#E8C840; font-size:1rem;">★</span>
+<span><b>16 Benchmark Signals</b> &nbsp;•&nbsp; <b>5 Clinical Cohorts</b> &nbsp;•&nbsp; <b>FAERS 2x2 Disproportionality</b></span>
+</div>
+<h1 class="editorial-headline" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:clamp(1.85rem,4vw,2.85rem); line-height:1.08; letter-spacing:-0.025em; color:#1A1A1A; margin:0 0 16px 0; max-width:680px;">
+Temporal Pharmacovigilance<br/>That Actually Stops<br/>Alert Fatigue.
+</h1>
+<p class="editorial-subtext" style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1rem; line-height:1.6; color:#6B6B6B; max-width:580px; margin:0;">
+Combining real-world FDA adverse event reporting ratios with patient-specific medication timelines to surface only the interactions that demand clinical action.
+</p>
+</div>""",
     unsafe_allow_html=True,
 )
 
@@ -1807,38 +1743,36 @@ elif menu == "FAERS Disproportionality Explorer":
 # ==============================================================================
 current_year = date.today().year
 st.markdown(
-    f"""
-    <div class="editorial-footer">
-        <div class="footer-grid">
-            <div>
-                <a href="?workflow=discovery" target="_self" class="brand-link" style="margin-bottom: 6px;">
-                    <span class="brand-title" style="font-size: 1.25rem;">LADIP</span>
-                    <span class="brand-dot" style="width: 15px; height: 15px; font-size: 9px;">✓</span>
-                </a>
-                <div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 4px;">
-                    &copy; {current_year} LADIP — Longitudinal Adverse Drug Interaction Predictor. All rights reserved.
-                </div>
-            </div>
-            <div>
-                <div class="section-eyebrow" style="margin-bottom: 8px;">Clinical Modules</div>
-                <div class="footer-links">
-                    <a href="?workflow=discovery" target="_self">Interaction Discovery</a>
-                    <a href="?workflow=safety" target="_self">Prospective Safety Check</a>
-                    <a href="?workflow=ehr" target="_self">Patient EHR &amp; OCR</a>
-                    <a href="?workflow=faers" target="_self">FAERS Signal Explorer</a>
-                </div>
-            </div>
-            <div>
-                <div class="section-eyebrow" style="margin-bottom: 8px;">Standards &amp; References</div>
-                <div class="footer-links">
-                    <a href="https://open.fda.gov/apis/drug/event/" target="_blank" rel="noopener noreferrer">FDA FAERS API</a>
-                    <a href="https://lhncbc.nlm.nih.gov/RxNav/" target="_blank" rel="noopener noreferrer">NIH RxNorm</a>
-                    <a href="https://www.meddra.org/" target="_blank" rel="noopener noreferrer">MedDRA Ontology</a>
-                    <a href="https://www.ncbi.nlm.nih.gov/books/NBK548069/" target="_blank" rel="noopener noreferrer">Naranjo Scale</a>
-                </div>
-            </div>
-        </div>
-    </div>
-    """,
+    f"""<div class="editorial-footer" style="border-top:1px solid #E5E5E0; margin-top:48px; padding-top:28px; padding-bottom:16px; font-size:0.82rem; color:#6B6B6B;">
+<div class="footer-grid" style="display:flex; flex-wrap:wrap; justify-content:space-between; gap:24px; margin-bottom:20px;">
+<div>
+<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#1A1A1A; display:inline-flex; align-items:center; gap:8px; margin-bottom:6px;">
+<span class="brand-title" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.25rem; color:#1A1A1A; text-decoration:none;">LADIP</span>
+<span class="brand-dot" style="display:inline-flex; align-items:center; justify-content:center; width:15px; height:15px; border-radius:50%; background-color:#D4A5E5; color:#1A1A1A; font-size:9px; font-weight:800; text-decoration:none;">✓</span>
+</a>
+<div style="font-size: 0.78rem; color: #6B6B6B; margin-top: 4px;">
+&copy; {current_year} LADIP — Longitudinal Adverse Drug Interaction Predictor. All rights reserved.
+</div>
+</div>
+<div>
+<div class="section-eyebrow" style="margin-bottom: 8px;">Clinical Modules</div>
+<div class="footer-links" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+<a href="?workflow=discovery" target="_self" style="color:#1A1A1A; text-decoration:none; font-weight:600;">Interaction Discovery</a>
+<a href="?workflow=safety" target="_self" style="color:#1A1A1A; text-decoration:none; font-weight:600;">Prospective Safety Check</a>
+<a href="?workflow=ehr" target="_self" style="color:#1A1A1A; text-decoration:none; font-weight:600;">Patient EHR &amp; OCR</a>
+<a href="?workflow=faers" target="_self" style="color:#1A1A1A; text-decoration:none; font-weight:600;">FAERS Signal Explorer</a>
+</div>
+</div>
+<div>
+<div class="section-eyebrow" style="margin-bottom: 8px;">Standards &amp; References</div>
+<div class="footer-links" style="display:flex; flex-wrap:wrap; gap:16px; align-items:center;">
+<a href="https://open.fda.gov/apis/drug/event/" target="_blank" rel="noopener noreferrer" style="color:#1A1A1A; text-decoration:none; font-weight:600;">FDA FAERS API</a>
+<a href="https://lhncbc.nlm.nih.gov/RxNav/" target="_blank" rel="noopener noreferrer" style="color:#1A1A1A; text-decoration:none; font-weight:600;">NIH RxNorm</a>
+<a href="https://www.meddra.org/" target="_blank" rel="noopener noreferrer" style="color:#1A1A1A; text-decoration:none; font-weight:600;">MedDRA Ontology</a>
+<a href="https://www.ncbi.nlm.nih.gov/books/NBK548069/" target="_blank" rel="noopener noreferrer" style="color:#1A1A1A; text-decoration:none; font-weight:600;">Naranjo Scale</a>
+</div>
+</div>
+</div>
+</div>""",
     unsafe_allow_html=True,
 )

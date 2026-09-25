@@ -14,7 +14,6 @@ export default function MotionView({
 }) {
   const opacity = useRef(new Animated.Value(0)).current;
   const translateY = useRef(new Animated.Value(initialY)).current;
-  const viewRef = useRef(null);
 
   useEffect(() => {
     const useNative = Platform.OS !== 'web';
@@ -35,20 +34,6 @@ export default function MotionView({
           useNativeDriver: useNative,
         }),
       ]).start();
-
-      if (Platform.OS === 'web' && typeof window !== 'undefined' && viewRef.current) {
-        import(/* webpackIgnore: true */ 'https://cdn.jsdelivr.net/npm/motion@12/+esm')
-          .then((motion) => {
-            if (viewRef.current && typeof motion?.animate === 'function') {
-              motion.animate(
-                viewRef.current,
-                { opacity: [0, 1], transform: [`translateY(${initialY}px)`, 'translateY(0px)'] },
-                { type: 'spring', stiffness: 120, damping: 18 }
-              );
-            }
-          })
-          .catch(() => {});
-      }
     }, delay);
 
     return () => clearTimeout(timer);
@@ -56,7 +41,6 @@ export default function MotionView({
 
   return (
     <Animated.View
-      ref={viewRef}
       style={[
         style,
         {
