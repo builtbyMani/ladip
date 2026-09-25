@@ -1,6 +1,6 @@
 /**
  * Prospective Drug Safety Checker Screen ("Ask Medicine")
- * Allows patient to verify over-the-counter or new medicines before buying or consuming.
+ * Editorial Health-Tech Aesthetic
  */
 import React, { useState } from 'react';
 import {
@@ -12,13 +12,14 @@ import {
   ScrollView,
   ActivityIndicator,
   Keyboard,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import { checkNewDrug } from '../api/client';
 
 export default function DrugCheckerScreen() {
-  const { profile, currentPatientId } = usePatient();
+  const { currentPatientId } = usePatient();
   const [drugInput, setDrugInput] = useState('');
   const [doseInput, setDoseInput] = useState('');
   const [result, setResult] = useState(null);
@@ -26,11 +27,11 @@ export default function DrugCheckerScreen() {
   const [error, setError] = useState(null);
 
   const quickSamples = [
-    { name: 'Ibuprofen', dose: '400', label: 'Ibuprofen (Pain)' },
-    { name: 'Paracetamol', dose: '500', label: 'Paracetamol (Fever)' },
-    { name: 'Amiodarone', dose: '200', label: 'Amiodarone (Heart)' },
-    { name: 'Bactrim', dose: '800', label: 'Bactrim (Sulfa/UTI)' },
-    { name: 'Pantoprazole', dose: '40', label: 'Pantoprazole (Antacid)' },
+    { name: 'Ibuprofen', dose: '400', label: 'Ibuprofen 400mg' },
+    { name: 'Paracetamol', dose: '500', label: 'Paracetamol 500mg' },
+    { name: 'Amiodarone', dose: '200', label: 'Amiodarone 200mg' },
+    { name: 'Bactrim', dose: '800', label: 'Bactrim 800mg' },
+    { name: 'Pantoprazole', dose: '40', label: 'Pantoprazole 40mg' },
   ];
 
   const handleCheck = async (nameToCheck = drugInput, doseToCheck = doseInput) => {
@@ -51,62 +52,37 @@ export default function DrugCheckerScreen() {
     }
   };
 
-  const getStatusStyle = (status) => {
+  const getStatusColor = (status) => {
     switch (status) {
       case 'CRITICAL_CONTRAINDICATION':
-        return {
-          bg: '#FEF2F2',
-          border: '#F87171',
-          text: '#DC2626',
-          icon: 'close-circle',
-          title: 'DO NOT TAKE (CONTRAINDICATED)',
-        };
+        return { text: '#DC2626', title: 'CONTRAINDICATED' };
       case 'HIGH_RISK':
-        return {
-          bg: '#FFF7ED',
-          border: '#FB923C',
-          text: '#EA580C',
-          icon: 'alert-circle',
-          title: 'HIGH RISK INTERACTION',
-        };
+        return { text: '#B48A00', title: 'HIGH INTERACTION RISK' };
       case 'MODERATE_RISK':
-        return {
-          bg: '#FFFBEB',
-          border: '#FCD34D',
-          text: '#D97706',
-          icon: 'warning',
-          title: 'CAUTION REQUIRED',
-        };
+        return { text: '#6B6B6B', title: 'MODERATE CAUTION' };
       default:
-        return {
-          bg: '#F0FDF4',
-          border: '#86EFAC',
-          text: '#16A34A',
-          icon: 'checkmark-circle',
-          title: 'COMPATIBLE WITH REGIMEN',
-        };
+        return { text: '#1B7A3D', title: 'COMPATIBLE WITH REGIMEN' };
     }
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Title */}
+      {/* Editorial Header */}
       <View style={styles.header}>
-        <Ionicons name="shield-search" size={24} color="#0284C7" />
+        <Text style={styles.headerEyebrow}>PROSPECTIVE CHECK</Text>
         <Text style={styles.headerTitle}>Ask Medicine / OTC Safety</Text>
       </View>
       <Text style={styles.headerSub}>
-        Check any tablet, painkiller, or syrup before buying to prevent dangerous interactions with your current prescriptions.
+        Verify any tablet, painkiller, or syrup before purchasing to detect hidden multi-drug interactions with your active regimen.
       </Text>
 
-      {/* Input Box */}
+      {/* Input Form */}
       <View style={styles.inputCard}>
-        <Text style={styles.inputLabel}>Enter Medicine Name</Text>
+        <Text style={styles.inputLabel}>Candidate Medication</Text>
         <View style={styles.inputRow}>
-          <Ionicons name="search" size={18} color="#94A3B8" style={{ marginRight: 8 }} />
           <TextInput
             style={styles.textInput}
-            placeholder="e.g. Ibuprofen, Combiflam, Crocin..."
+            placeholder="e.g. Ibuprofen, Paracetamol, Bactrim..."
             placeholderTextColor="#94A3B8"
             value={drugInput}
             onChangeText={setDrugInput}
@@ -116,7 +92,7 @@ export default function DrugCheckerScreen() {
         </View>
 
         {/* Quick Test Chips */}
-        <Text style={styles.chipsLabel}>Quick Hackathon Test:</Text>
+        <Text style={styles.chipsLabel}>Quick Case Testing</Text>
         <View style={styles.chipsRow}>
           {quickSamples.map((sample, idx) => (
             <TouchableOpacity
@@ -133,20 +109,17 @@ export default function DrugCheckerScreen() {
           ))}
         </View>
 
-        {/* Submit Button */}
+        {/* Black Pill CTA Button */}
         <TouchableOpacity
           style={[styles.checkBtn, !drugInput.trim() && styles.checkBtnDisabled]}
           disabled={!drugInput.trim() || loading}
           onPress={() => handleCheck()}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           {loading ? (
             <ActivityIndicator size="small" color="#FFFFFF" />
           ) : (
-            <>
-              <Ionicons name="flash-outline" size={16} color="#FFFFFF" />
-              <Text style={styles.checkBtnText}>Check Compatibility</Text>
-            </>
+            <Text style={styles.checkBtnText}>Run Safety Check</Text>
           )}
         </TouchableOpacity>
       </View>
@@ -154,7 +127,6 @@ export default function DrugCheckerScreen() {
       {/* Error Message */}
       {error && (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle" size={18} color="#DC2626" />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -163,24 +135,14 @@ export default function DrugCheckerScreen() {
       {result && (
         <View style={styles.resultContainer}>
           {(() => {
-            const statusStyle = getStatusStyle(result.safety_status);
+            const statusInfo = getStatusColor(result.safety_status);
             return (
-              <View
-                style={[
-                  styles.verdictCard,
-                  { backgroundColor: statusStyle.bg, borderColor: statusStyle.border },
-                ]}
-              >
-                <View style={styles.verdictTop}>
-                  <Ionicons name={statusStyle.icon} size={26} color={statusStyle.text} />
-                  <Text style={[styles.verdictTitle, { color: statusStyle.text }]}>
-                    {statusStyle.title}
-                  </Text>
-                </View>
-
+              <View style={[styles.verdictCard, { borderLeftColor: statusInfo.text, borderLeftWidth: 3 }]}>
+                <Text style={[styles.verdictEyebrow, { color: statusInfo.text }]}>
+                  {statusInfo.title}
+                </Text>
                 <Text style={styles.verdictDrug}>
-                  Tested: <Text style={{ fontWeight: '800' }}>{result.new_drug}</Text>{' '}
-                  (Generic: {result.normalized_ingredient})
+                  {result.new_drug} (Generic: {result.normalized_ingredient})
                 </Text>
 
                 <Text style={styles.verdictRec}>{result.recommendation}</Text>
@@ -188,7 +150,7 @@ export default function DrugCheckerScreen() {
                 {/* Allergy Warnings */}
                 {result.allergy_warnings?.length > 0 && (
                   <View style={styles.alertDetailBlock}>
-                    <Text style={styles.alertDetailHeading}>Allergy Warning:</Text>
+                    <Text style={styles.alertDetailHeading}>Allergy Warning</Text>
                     {result.allergy_warnings.map((al, i) => (
                       <Text key={i} style={styles.alertDetailText}>
                         • {al}
@@ -200,12 +162,15 @@ export default function DrugCheckerScreen() {
                 {/* Flagged Interactions */}
                 {result.flagged_interactions?.length > 0 && (
                   <View style={styles.alertDetailBlock}>
-                    <Text style={styles.alertDetailHeading}>Formed Multi-Drug Interactions:</Text>
+                    <Text style={styles.alertDetailHeading}>Emergent FAERS Interactions</Text>
                     {result.flagged_interactions.map((combo, i) => (
                       <View key={i} style={styles.interactionItem}>
-                        <Text style={styles.comboName}>{combo.combo}</Text>
+                        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline' }}>
+                          <Text style={styles.comboName}>{combo.combo}</Text>
+                          <Text style={styles.comboPRR}>{combo.prr}x PRR</Text>
+                        </View>
                         <Text style={styles.comboDetail}>
-                          Adverse Risk: <Text style={{ fontWeight: '700' }}>{combo.reaction}</Text> • PRR: {combo.prr}x ({combo.cases} cases in FAERS)
+                          Adverse Risk: <Text style={{ fontWeight: '700', color: '#DC2626' }}>{combo.reaction}</Text> ({combo.cases} cases reported)
                         </Text>
                       </View>
                     ))}
@@ -223,189 +188,181 @@ export default function DrugCheckerScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 40,
+    padding: 20,
+    paddingBottom: 44,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 4,
+  },
+  headerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   headerSub: {
     fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    marginBottom: 16,
+    color: '#6B6B6B',
+    lineHeight: 19,
+    marginBottom: 20,
   },
   inputCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#E5E5E0',
+    padding: 18,
+    marginBottom: 20,
   },
   inputLabel: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#334155',
+    color: '#6B6B6B',
     textTransform: 'uppercase',
-    marginBottom: 6,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   inputRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 8,
-    paddingHorizontal: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: '#1A1A1A',
     paddingVertical: 8,
-    marginBottom: 12,
+    marginBottom: 16,
   },
   textInput: {
-    flex: 1,
-    fontSize: 15,
-    color: '#0F172A',
+    fontSize: 16,
+    color: '#1A1A1A',
+    fontWeight: '600',
   },
   chipsLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
-    marginBottom: 6,
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    textTransform: 'uppercase',
+    marginBottom: 8,
   },
   chipsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 14,
+    marginBottom: 20,
   },
   chip: {
-    backgroundColor: '#F1F5F9',
+    backgroundColor: '#FFFFFF',
     paddingVertical: 5,
-    paddingHorizontal: 10,
-    borderRadius: 16,
+    paddingHorizontal: 12,
+    borderRadius: 9999,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#E5E5E0',
   },
   chipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#334155',
+    color: '#1A1A1A',
   },
   checkBtn: {
-    backgroundColor: '#0284C7',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 13,
+    borderRadius: 9999,
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
+    justifyContent: 'center',
   },
   checkBtnDisabled: {
-    backgroundColor: '#94A3B8',
+    opacity: 0.4,
   },
   checkBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
+    letterSpacing: 0.2,
   },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
+    borderColor: '#DC2626',
     padding: 12,
-    gap: 8,
     marginBottom: 16,
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    flex: 1,
   },
   resultContainer: {
     marginTop: 4,
   },
   verdictCard: {
-    borderRadius: 12,
-    borderWidth: 1.5,
-    padding: 16,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    padding: 18,
   },
-  verdictTop: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    marginBottom: 8,
-  },
-  verdictTitle: {
-    fontSize: 15,
-    fontWeight: '800',
-    letterSpacing: 0.3,
+  verdictEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
   verdictDrug: {
-    fontSize: 13,
-    color: '#334155',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
     marginBottom: 8,
   },
   verdictRec: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#0F172A',
+    fontSize: 13,
+    color: '#1A1A1A',
     lineHeight: 20,
-    marginBottom: 12,
+    marginBottom: 14,
   },
   alertDetailBlock: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 8,
-    padding: 12,
-    marginTop: 8,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E0',
+    paddingTop: 12,
+    marginTop: 10,
   },
   alertDetailHeading: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#DC2626',
+    color: '#6B6B6B',
     textTransform: 'uppercase',
-    marginBottom: 6,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   alertDetailText: {
     fontSize: 12,
-    color: '#334155',
-    lineHeight: 16,
-    marginBottom: 2,
+    color: '#DC2626',
+    lineHeight: 18,
+    marginBottom: 3,
   },
   interactionItem: {
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingVertical: 6,
+    borderBottomColor: '#F5F5F0',
+    paddingVertical: 8,
   },
   comboName: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#1A1A1A',
+  },
+  comboPRR: {
+    fontSize: 12,
+    fontFamily: 'monospace',
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   comboDetail: {
     fontSize: 11,
-    color: '#64748B',
+    color: '#6B6B6B',
     marginTop: 2,
   },
 });

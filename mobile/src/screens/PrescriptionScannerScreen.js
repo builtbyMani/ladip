@@ -1,6 +1,6 @@
 /**
  * Prescription & Medical Report Scanner Screen
- * Uses Camera / Photo Gallery to scan prescriptions and run automated OCR/Gemini extraction.
+ * Editorial Health-Tech Aesthetic
  */
 import React, { useState } from 'react';
 import {
@@ -12,6 +12,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Alert,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import * as ImagePicker from 'expo-image-picker';
@@ -19,13 +20,12 @@ import { usePatient } from '../context/PatientContext';
 import { uploadPrescriptionBase64 } from '../api/client';
 
 export default function PrescriptionScannerScreen({ navigation }) {
-  const { currentPatientId, profile, refreshPatientData } = usePatient();
+  const { currentPatientId, refreshPatientData } = usePatient();
   const [selectedImage, setSelectedImage] = useState(null);
   const [scanning, setScanning] = useState(false);
   const [scanResult, setScanResult] = useState(null);
   const [error, setError] = useState(null);
 
-  // Take photo with camera
   const handleTakePhoto = async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
@@ -51,7 +51,6 @@ export default function PrescriptionScannerScreen({ navigation }) {
     }
   };
 
-  // Pick from gallery
   const handlePickImage = async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
@@ -78,7 +77,6 @@ export default function PrescriptionScannerScreen({ navigation }) {
     }
   };
 
-  // Upload and process with backend OCR
   const handleScanUpload = async () => {
     if (!selectedImage || !selectedImage.base64) {
       Alert.alert('No Image', 'Please capture or select an image first.');
@@ -90,7 +88,7 @@ export default function PrescriptionScannerScreen({ navigation }) {
     try {
       const data = await uploadPrescriptionBase64(currentPatientId, selectedImage.base64);
       setScanResult(data);
-      refreshPatientData(); // Sync updated meds with context
+      refreshPatientData();
     } catch (err) {
       setError(err.message || 'Failed to analyze prescription');
     } finally {
@@ -98,12 +96,10 @@ export default function PrescriptionScannerScreen({ navigation }) {
     }
   };
 
-  // Quick simulated prescription for hackathon presentation
   const handleSimulateDemo = async () => {
     setScanning(true);
     setError(null);
     try {
-      // Send a sample discharge summary text to the backend
       const res = await fetch(`http://localhost:8000/api/v1/patients/${currentPatientId}/scan-report`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -123,31 +119,30 @@ export default function PrescriptionScannerScreen({ navigation }) {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Header */}
+      {/* Editorial Header */}
       <View style={styles.header}>
-        <Ionicons name="scan-circle" size={24} color="#0284C7" />
-        <Text style={styles.headerTitle}>Scan Prescription / Medical Report</Text>
+        <Text style={styles.headerEyebrow}>OPTICAL INGESTION</Text>
+        <Text style={styles.headerTitle}>Scan Prescription / Chart</Text>
       </View>
       <Text style={styles.headerSub}>
-        Take a clear photo of your doctor's prescription or hospital discharge paper. LADIP automatically extracts the medicines and verifies interaction safety.
+        Capture a clear photo of your prescription or hospital discharge summary. LADIP extracts medications and immediately checks for multi-drug interactions.
       </Text>
 
       {/* Action Buttons */}
       <View style={styles.actionRow}>
-        <TouchableOpacity style={styles.captureBtn} onPress={handleTakePhoto} activeOpacity={0.8}>
-          <Ionicons name="camera-outline" size={20} color="#FFFFFF" />
+        <TouchableOpacity style={styles.captureBtn} onPress={handleTakePhoto} activeOpacity={0.85}>
+          <Ionicons name="camera-outline" size={18} color="#FFFFFF" />
           <Text style={styles.captureBtnText}>Take Photo</Text>
         </TouchableOpacity>
 
-        <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage} activeOpacity={0.8}>
-          <Ionicons name="image-outline" size={20} color="#0284C7" />
-          <Text style={styles.galleryBtnText}>Choose Gallery</Text>
+        <TouchableOpacity style={styles.galleryBtn} onPress={handlePickImage} activeOpacity={0.85}>
+          <Ionicons name="image-outline" size={18} color="#1A1A1A" />
+          <Text style={styles.galleryBtnText}>Choose Photo</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Demo Simulation button for hackathon judges */}
-      <TouchableOpacity style={styles.demoBtn} onPress={handleSimulateDemo} activeOpacity={0.8}>
-        <Ionicons name="bulb-outline" size={16} color="#475569" />
+      {/* Quick Benchmark Simulator */}
+      <TouchableOpacity style={styles.demoBtn} onPress={handleSimulateDemo} activeOpacity={0.85}>
         <Text style={styles.demoBtnText}>Simulate New Prescription (Hackathon Demo)</Text>
       </TouchableOpacity>
 
@@ -159,15 +154,12 @@ export default function PrescriptionScannerScreen({ navigation }) {
             style={styles.scanSubmitBtn}
             onPress={handleScanUpload}
             disabled={scanning}
-            activeOpacity={0.8}
+            activeOpacity={0.85}
           >
             {scanning ? (
               <ActivityIndicator size="small" color="#FFFFFF" />
             ) : (
-              <>
-                <Ionicons name="analytics-outline" size={18} color="#FFFFFF" />
-                <Text style={styles.scanSubmitBtnText}>Extract & Check Safety</Text>
-              </>
+              <Text style={styles.scanSubmitBtnText}>Extract & Run Safety Check</Text>
             )}
           </TouchableOpacity>
         </View>
@@ -176,16 +168,15 @@ export default function PrescriptionScannerScreen({ navigation }) {
       {/* Scanning Loader */}
       {scanning && (
         <View style={styles.scanningBox}>
-          <ActivityIndicator size="large" color="#0284C7" />
-          <Text style={styles.scanningText}>Analyzing prescription with OCR & Gemini AI...</Text>
-          <Text style={styles.scanningSub}>Cross-referencing with your active medications & allergies</Text>
+          <ActivityIndicator size="large" color="#1B7A3D" />
+          <Text style={styles.scanningText}>Extracting clinical text with OCR...</Text>
+          <Text style={styles.scanningSub}>Cross-referencing with active regimen & allergies</Text>
         </View>
       )}
 
       {/* Error Message */}
       {error && (
         <View style={styles.errorBox}>
-          <Ionicons name="alert-circle" size={18} color="#DC2626" />
           <Text style={styles.errorText}>{error}</Text>
         </View>
       )}
@@ -193,20 +184,17 @@ export default function PrescriptionScannerScreen({ navigation }) {
       {/* Scan Results Card */}
       {scanResult && (
         <View style={styles.resultCard}>
-          <View style={styles.resultHeader}>
-            <Ionicons name="checkmark-done-circle" size={24} color="#16A34A" />
-            <Text style={styles.resultTitle}>Prescription Processed</Text>
-          </View>
-
+          <Text style={styles.resultEyebrow}>EXTRACTION COMPLETE</Text>
+          <Text style={styles.resultTitle}>Prescription Processed</Text>
           <Text style={styles.resultMsg}>{scanResult.message}</Text>
 
           {/* Extracted Medications */}
-          <Text style={styles.sectionHeading}>Extracted Medications:</Text>
+          <Text style={styles.sectionHeading}>EXTRACTED MEDICATIONS</Text>
           <View style={styles.medsPillsRow}>
             {scanResult.extracted_medications?.length > 0 ? (
               scanResult.extracted_medications.map((m, idx) => (
-                <View key={idx} style={styles.medPill}>
-                  <Text style={styles.medPillText}>💊 {m}</Text>
+                <View key={idx} style={styles.blackDrugPill}>
+                  <Text style={styles.blackDrugPillText}>{m}</Text>
                 </View>
               ))
             ) : (
@@ -217,12 +205,12 @@ export default function PrescriptionScannerScreen({ navigation }) {
           {/* Immediate Safety Alerts */}
           {scanResult.immediate_alerts?.length > 0 && (
             <View style={styles.immediateAlertsBlock}>
-              <Text style={styles.immediateAlertHeading}>⚠️ Safety Warnings Triggered:</Text>
+              <Text style={styles.immediateAlertHeading}>SAFETY WARNINGS TRIGGERED</Text>
               {scanResult.immediate_alerts.map((al, idx) => (
                 <View key={idx} style={styles.immediateAlertItem}>
                   <Text style={styles.immediateAlertCombo}>{al.combo}</Text>
                   <Text style={styles.immediateAlertRisk}>
-                    Risk: <Text style={{ fontWeight: '700' }}>{al.adverse_event}</Text> ({al.tier} Tier)
+                    Adverse Risk: <Text style={{ fontWeight: '700' }}>{al.adverse_event}</Text> ({al.tier} Tier)
                   </Text>
                 </View>
               ))}
@@ -244,226 +232,214 @@ export default function PrescriptionScannerScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 40,
+    padding: 20,
+    paddingBottom: 44,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+    marginBottom: 4,
+  },
+  headerEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   headerTitle: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   headerSub: {
     fontSize: 13,
-    color: '#64748B',
-    lineHeight: 18,
-    marginBottom: 16,
+    color: '#6B6B6B',
+    lineHeight: 19,
+    marginBottom: 20,
   },
   actionRow: {
     flexDirection: 'row',
     gap: 12,
-    marginBottom: 10,
+    marginBottom: 12,
   },
   captureBtn: {
     flex: 1,
-    backgroundColor: '#0284C7',
+    backgroundColor: '#1A1A1A',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 9999,
   },
   captureBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   galleryBtn: {
     flex: 1,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#0284C7',
+    borderColor: '#E5E5E0',
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
     gap: 8,
     paddingVertical: 14,
-    borderRadius: 10,
+    borderRadius: 9999,
   },
   galleryBtnText: {
-    color: '#0284C7',
-    fontSize: 14,
+    color: '#1A1A1A',
+    fontSize: 13,
     fontWeight: '700',
   },
   demoBtn: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    backgroundColor: '#F1F5F9',
-    borderWidth: 1,
-    borderColor: '#CBD5E1',
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 16,
+    backgroundColor: '#F5F5F0',
+    paddingVertical: 10,
+    borderRadius: 9999,
+    marginBottom: 20,
   },
   demoBtnText: {
     fontSize: 12,
-    color: '#334155',
+    color: '#1A1A1A',
     fontWeight: '600',
   },
   previewContainer: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 12,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
+    borderColor: '#E5E5E0',
+    padding: 12,
+    marginBottom: 20,
   },
   previewImage: {
     width: '100%',
     height: 220,
-    borderRadius: 8,
     resizeMode: 'cover',
     marginBottom: 12,
   },
   scanSubmitBtn: {
-    backgroundColor: '#16A34A',
-    flexDirection: 'row',
-    justifyContent: 'center',
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 13,
+    borderRadius: 9999,
     alignItems: 'center',
-    gap: 8,
-    paddingVertical: 12,
-    borderRadius: 8,
+    justifyContent: 'center',
   },
   scanSubmitBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
   scanningBox: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 24,
+    padding: 28,
     alignItems: 'center',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginVertical: 12,
+    borderColor: '#E5E5E0',
+    marginVertical: 14,
   },
   scanningText: {
     fontSize: 14,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#1A1A1A',
     marginTop: 12,
   },
   scanningSub: {
     fontSize: 12,
-    color: '#64748B',
+    color: '#6B6B6B',
     marginTop: 4,
   },
   errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#F87171',
-    borderRadius: 8,
+    borderColor: '#DC2626',
     padding: 12,
-    gap: 8,
     marginBottom: 16,
   },
   errorText: {
     color: '#DC2626',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '600',
-    flex: 1,
   },
   resultCard: {
     backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 18,
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    marginTop: 6,
+    borderColor: '#E5E5E0',
+    padding: 18,
+    marginTop: 8,
   },
-  resultHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 8,
+  resultEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1B7A3D',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
   resultTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#16A34A',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 20,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    marginBottom: 6,
   },
   resultMsg: {
     fontSize: 13,
-    color: '#334155',
-    marginBottom: 12,
+    color: '#6B6B6B',
+    marginBottom: 16,
   },
   sectionHeading: {
-    fontSize: 12,
+    fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
-    textTransform: 'uppercase',
-    marginBottom: 6,
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   medsPillsRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 6,
-    marginBottom: 14,
+    marginBottom: 18,
   },
-  medPill: {
-    backgroundColor: '#F0FDF4',
-    borderWidth: 1,
-    borderColor: '#86EFAC',
-    borderRadius: 16,
-    paddingVertical: 5,
+  blackDrugPill: {
+    backgroundColor: '#1A1A1A',
     paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 9999,
   },
-  medPillText: {
+  blackDrugPillText: {
+    color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
-    color: '#166534',
+    fontWeight: '600',
   },
   emptyText: {
     fontSize: 12,
-    color: '#94A3B8',
+    color: '#6B6B6B',
   },
   immediateAlertsBlock: {
-    backgroundColor: '#FEF2F2',
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: '#FECACA',
-    padding: 12,
-    marginBottom: 14,
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E0',
+    paddingTop: 14,
+    marginBottom: 16,
   },
   immediateAlertHeading: {
-    fontSize: 13,
-    fontWeight: '800',
+    fontSize: 10,
+    fontWeight: '700',
     color: '#DC2626',
-    marginBottom: 6,
+    letterSpacing: 0.8,
+    marginBottom: 8,
   },
   immediateAlertItem: {
-    borderBottomWidth: 1,
-    borderBottomColor: '#FEE2E2',
     paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F5F5F0',
   },
   immediateAlertCombo: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#1A1A1A',
   },
   immediateAlertRisk: {
     fontSize: 12,
@@ -471,14 +447,15 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   doneBtn: {
-    backgroundColor: '#0F172A',
-    paddingVertical: 12,
-    borderRadius: 8,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 13,
+    borderRadius: 9999,
     alignItems: 'center',
+    marginTop: 8,
   },
   doneBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
   },
 });

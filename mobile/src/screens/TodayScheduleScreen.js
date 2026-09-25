@@ -1,5 +1,6 @@
 /**
  * Today's Medicine Schedule & Regimen Safety Shield Screen
+ * Editorial Health-Tech Aesthetic
  */
 import React from 'react';
 import {
@@ -9,6 +10,7 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
+  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
@@ -19,38 +21,30 @@ export default function TodayScheduleScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#0284C7" />
-        <Text style={styles.loadingText}>Syncing patient safety profile...</Text>
+        <ActivityIndicator size="large" color="#1B7A3D" />
+        <Text style={styles.loadingText}>Syncing longitudinal safety profile...</Text>
       </View>
     );
   }
 
-  // Determine top interaction status
   const criticalAlert = alerts.find((a) => a.severity_tier === 'CRITICAL' && !a.is_suppressed);
   const highAlert = alerts.find((a) => a.severity_tier === 'HIGH' && !a.is_suppressed);
   const activeAlert = criticalAlert || highAlert;
 
-  const slotIcons = {
-    morning: 'sunny-outline',
-    afternoon: 'partly-sunny-outline',
-    evening: 'moon-outline',
-    bedtime: 'bed-outline',
-  };
-
-  const slotColors = {
-    morning: '#EA580C',
-    afternoon: '#0284C7',
-    evening: '#7C3AED',
-    bedtime: '#334155',
+  const slotAccentColors = {
+    morning: '#E8C840',
+    afternoon: '#D4A5E5',
+    evening: '#1B7A3D',
+    bedtime: '#6B6B6B',
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Patient Greeting & Date */}
+      {/* Editorial Greeting & Quick Action */}
       <View style={styles.greetingBar}>
-        <View>
+        <View style={{ flex: 1 }}>
           <Text style={styles.welcomeText}>
-            Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Patient'} 🙏
+            Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Patient'}
           </Text>
           <Text style={styles.dateText}>
             {new Date().toLocaleDateString('en-IN', {
@@ -65,126 +59,137 @@ export default function TodayScheduleScreen({ navigation }) {
         <TouchableOpacity
           style={styles.scanQuickBtn}
           onPress={() => navigation.navigate('Scanner')}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
-          <Ionicons name="scan-outline" size={16} color="#FFFFFF" />
+          <Ionicons name="scan-outline" size={14} color="#FFFFFF" />
           <Text style={styles.scanQuickBtnText}>Scan Rx</Text>
         </TouchableOpacity>
       </View>
 
-      {/* Regimen Safety Shield Card */}
+      {/* Regimen Safety Shield Card — Editorial White Card */}
       {activeAlert ? (
         <View style={styles.alertShieldCard}>
-          <View style={styles.alertShieldHeader}>
-            <Ionicons name="warning" size={24} color="#DC2626" />
-            <Text style={styles.alertShieldTitle}>
-              {activeAlert.severity_tier} SAFETY ALERT
-            </Text>
+          <View style={styles.alertShieldTop}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.alertEyebrow}>
+                {activeAlert.severity_tier} INTERACTION DETECTED
+              </Text>
+              <Text style={styles.alertComboText}>
+                {activeAlert.combo_str} → {activeAlert.adverse_event}
+              </Text>
+            </View>
+            <View style={styles.statBlock}>
+              <Text style={styles.statHeroNum}>{activeAlert.prr}x</Text>
+              <Text style={styles.statHeroLabel}>PRR RATIO</Text>
+            </View>
           </View>
-          <Text style={styles.alertComboText}>
-            {activeAlert.combo_str} ➔ {activeAlert.adverse_event}
-          </Text>
+
           <Text style={styles.alertAdviceText}>
             {activeAlert.recommendation || activeAlert.clinical_rationale}
           </Text>
+
           <View style={styles.alertMetaRow}>
-            <Text style={styles.alertMetaTag}>PRR: {activeAlert.prr}x</Text>
-            <Text style={styles.alertMetaTag}>Cases: {activeAlert.case_count}</Text>
-            {activeAlert.patient_has_matching_symptom && (
-              <Text style={[styles.alertMetaTag, { backgroundColor: '#FEE2E2', color: '#991B1B' }]}>
-                Symptom Reported
+            <View style={styles.outlinedBadge}>
+              <Text style={styles.outlinedBadgeText}>
+                FAERS Co-Reports: {activeAlert.case_count}
               </Text>
+            </View>
+            {activeAlert.patient_has_matching_symptom && (
+              <View style={[styles.outlinedBadge, { borderColor: '#DC2626' }]}>
+                <Text style={[styles.outlinedBadgeText, { color: '#DC2626' }]}>
+                  Symptom Correlated
+                </Text>
+              </View>
             )}
           </View>
         </View>
       ) : (
         <View style={styles.safeShieldCard}>
-          <View style={styles.safeShieldHeader}>
-            <Ionicons name="shield-checkmark" size={22} color="#16A34A" />
-            <Text style={styles.safeShieldTitle}>Regimen Safe & Stable</Text>
-          </View>
+          <Text style={styles.safeEyebrow}>LONGITUDINAL SURVEILLANCE</Text>
+          <Text style={styles.safeShieldTitle}>Regimen Safe & Stable</Text>
           <Text style={styles.safeShieldBody}>
-            No severe multi-drug interactions detected across your active prescriptions.
+            No uncontrolled multi-drug interactions detected across your active prescriptions. Low-grade background warnings are suppressed.
           </Text>
         </View>
       )}
 
       {/* Section Title */}
       <View style={styles.sectionHeader}>
-        <Ionicons name="time-outline" size={18} color="#0F172A" />
+        <Text style={styles.sectionEyebrow}>DAILY REGIMEN</Text>
         <Text style={styles.sectionTitle}>Today's Dosing Schedule</Text>
       </View>
 
       {/* Schedule Slots */}
-      {schedule && Object.keys(schedule).map((slotKey) => {
-        const slot = schedule[slotKey];
-        if (!slot || !slot.items || slot.items.length === 0) return null;
+      {schedule &&
+        Object.keys(schedule).map((slotKey) => {
+          const slot = schedule[slotKey];
+          if (!slot || !slot.items || slot.items.length === 0) return null;
+          const borderAccent = slotAccentColors[slotKey] || '#1B7A3D';
 
-        return (
-          <View key={slotKey} style={styles.slotCard}>
-            <View style={styles.slotHeader}>
-              <View style={styles.slotHeaderLeft}>
-                <Ionicons
-                  name={slotIcons[slotKey] || 'time-outline'}
-                  size={18}
-                  color={slotColors[slotKey] || '#0284C7'}
-                />
+          return (
+            <View
+              key={slotKey}
+              style={[styles.slotCard, { borderLeftColor: borderAccent, borderLeftWidth: 3 }]}
+            >
+              <View style={styles.slotHeader}>
                 <Text style={styles.slotTitle}>{slot.title}</Text>
+                <Text style={styles.slotCountText}>
+                  {slot.items.length} {slot.items.length === 1 ? 'DOSE' : 'DOSES'}
+                </Text>
               </View>
-              <Text style={styles.slotCountText}>
-                {slot.items.length} {slot.items.length === 1 ? 'med' : 'meds'}
-              </Text>
+
+              {slot.items.map((med, idx) => {
+                const medKey = `${slotKey}_${med.drug_name}_${idx}`;
+                const isTaken = takenMeds[medKey];
+
+                return (
+                  <TouchableOpacity
+                    key={idx}
+                    style={[
+                      styles.medItem,
+                      idx === slot.items.length - 1 && { borderBottomWidth: 0 },
+                      isTaken && styles.medItemTaken,
+                    ]}
+                    onPress={() => toggleMedTaken(medKey)}
+                    activeOpacity={0.75}
+                  >
+                    <Ionicons
+                      name={isTaken ? 'checkmark-circle' : 'ellipse-outline'}
+                      size={22}
+                      color={isTaken ? '#1B7A3D' : '#6B6B6B'}
+                    />
+                    <View style={styles.medDetails}>
+                      <View style={styles.medPillRow}>
+                        <View style={styles.blackDrugPill}>
+                          <Text style={styles.blackDrugPillText}>{med.drug_name}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.medInstructions}>
+                        {med.dose} • {med.instructions}
+                      </Text>
+                    </View>
+                    <Text style={[styles.statusLabel, isTaken && styles.statusLabelTaken]}>
+                      {isTaken ? 'TAKEN' : 'MARK'}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
             </View>
+          );
+        })}
 
-            {slot.items.map((med, idx) => {
-              const medKey = `${slotKey}_${med.drug_name}_${idx}`;
-              const isTaken = takenMeds[medKey];
-
-              return (
-                <TouchableOpacity
-                  key={idx}
-                  style={[styles.medItem, isTaken && styles.medItemTaken]}
-                  onPress={() => toggleMedTaken(medKey)}
-                  activeOpacity={0.7}
-                >
-                  <Ionicons
-                    name={isTaken ? 'checkmark-circle' : 'ellipse-outline'}
-                    size={22}
-                    color={isTaken ? '#16A34A' : '#94A3B8'}
-                  />
-                  <View style={styles.medDetails}>
-                    <Text style={[styles.medName, isTaken && styles.medNameTaken]}>
-                      {med.drug_name}
-                    </Text>
-                    <Text style={styles.medInstructions}>
-                      {med.dose} • {med.instructions}
-                    </Text>
-                  </View>
-                  <View style={styles.statusPill}>
-                    <Text style={[styles.statusPillText, isTaken && { color: '#16A34A' }]}>
-                      {isTaken ? 'TAKEN' : 'PENDING'}
-                    </Text>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
-          </View>
-        );
-      })}
-
-      {/* Active Diagnoses & Allergy Reminder */}
-      <View style={styles.infoCard}>
-        <View style={styles.infoHeader}>
-          <Ionicons name="medical-outline" size={16} color="#475569" />
-          <Text style={styles.infoTitle}>Your Clinical Profile</Text>
-        </View>
+      {/* Clinical Summary Footer */}
+      <View style={styles.infoStrip}>
+        <Text style={styles.sectionEyebrow}>CLINICAL CONTEXT</Text>
         <Text style={styles.infoLine}>
-          <Text style={{ fontWeight: '700' }}>Conditions: </Text>
+          <Text style={styles.infoLabel}>Conditions: </Text>
           {profile?.conditions?.join(', ') || 'None recorded'}
         </Text>
         <Text style={styles.infoLine}>
-          <Text style={{ fontWeight: '700' }}>Allergies: </Text>
-          {profile?.allergies?.length > 0 ? profile.allergies.join(', ') : 'No Known Drug Allergies (NKDA)'}
+          <Text style={styles.infoLabel}>Allergies: </Text>
+          {profile?.allergies?.length > 0
+            ? profile.allergies.join(', ')
+            : 'No Known Drug Allergies (NKDA)'}
         </Text>
       </View>
     </ScrollView>
@@ -194,238 +199,248 @@ export default function TodayScheduleScreen({ navigation }) {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 40,
+    padding: 20,
+    paddingBottom: 44,
   },
   centerContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   loadingText: {
     marginTop: 12,
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '500',
+    fontSize: 13,
+    color: '#6B6B6B',
   },
   greetingBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
   welcomeText: {
-    fontSize: 20,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 25,
+    fontWeight: '700',
+    color: '#1A1A1A',
     letterSpacing: -0.5,
   },
   dateText: {
     fontSize: 12,
-    color: '#64748B',
-    fontWeight: '500',
-    marginTop: 2,
+    color: '#6B6B6B',
+    marginTop: 4,
   },
   scanQuickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#0284C7',
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: 20,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: 9999,
     gap: 6,
   },
   scanQuickBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   alertShieldCard: {
-    backgroundColor: '#FEF2F2',
-    borderWidth: 1.5,
-    borderColor: '#FECACA',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    padding: 18,
+    marginBottom: 28,
   },
-  alertShieldHeader: {
+  alertShieldTop: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 6,
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 10,
   },
-  alertShieldTitle: {
-    fontSize: 14,
-    fontWeight: '800',
+  alertEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
     color: '#DC2626',
-    letterSpacing: 0.5,
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
   alertComboText: {
-    fontSize: 15,
+    fontSize: 16,
     fontWeight: '700',
-    color: '#0F172A',
-    marginBottom: 6,
+    color: '#1A1A1A',
+    lineHeight: 22,
+    paddingRight: 10,
+  },
+  statBlock: {
+    alignItems: 'flex-end',
+  },
+  statHeroNum: {
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 30,
+    fontWeight: '900',
+    color: '#1A1A1A',
+    lineHeight: 32,
+  },
+  statHeroLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginTop: 2,
   },
   alertAdviceText: {
     fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-    marginBottom: 10,
+    color: '#6B6B6B',
+    lineHeight: 19,
+    marginBottom: 14,
   },
   alertMetaRow: {
     flexDirection: 'row',
+    flexWrap: 'wrap',
     gap: 8,
   },
-  alertMetaTag: {
-    backgroundColor: '#FFFFFF',
+  outlinedBadge: {
     borderWidth: 1,
-    borderColor: '#FCA5A5',
-    color: '#DC2626',
+    borderColor: '#E5E5E0',
+    borderRadius: 9999,
+    paddingVertical: 3,
+    paddingHorizontal: 10,
+  },
+  outlinedBadgeText: {
     fontSize: 11,
-    fontWeight: '700',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 4,
+    fontWeight: '600',
+    color: '#1A1A1A',
   },
   safeShieldCard: {
-    backgroundColor: '#F0FDF4',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#BBF7D0',
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 20,
+    borderColor: '#E5E5E0',
+    borderLeftWidth: 3,
+    borderLeftColor: '#1B7A3D',
+    padding: 18,
+    marginBottom: 28,
   },
-  safeShieldHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
+  safeEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#1B7A3D',
+    letterSpacing: 0.8,
     marginBottom: 4,
   },
   safeShieldTitle: {
-    fontSize: 15,
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 18,
     fontWeight: '700',
-    color: '#16A34A',
+    color: '#1A1A1A',
+    marginBottom: 6,
   },
   safeShieldBody: {
     fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
+    color: '#6B6B6B',
+    lineHeight: 19,
   },
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 12,
+    marginBottom: 14,
+  },
+  sectionEyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginBottom: 4,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
   slotCard: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 14,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+    borderColor: '#E5E5E0',
+    padding: 16,
+    marginBottom: 16,
   },
   slotHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 8,
-    marginBottom: 8,
-  },
-  slotHeaderLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
+    borderBottomColor: '#E5E5E0',
+    paddingBottom: 10,
+    marginBottom: 6,
   },
   slotTitle: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#334155',
+    color: '#1A1A1A',
   },
   slotCountText: {
-    fontSize: 11,
-    color: '#94A3B8',
-    fontWeight: '600',
+    fontSize: 10,
+    color: '#6B6B6B',
+    fontWeight: '700',
+    letterSpacing: 0.6,
   },
   medItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 10,
+    paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#F5F5F0',
   },
   medItemTaken: {
-    opacity: 0.6,
+    opacity: 0.55,
   },
   medDetails: {
     flex: 1,
-    marginLeft: 10,
+    marginLeft: 12,
   },
-  medName: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#0F172A',
+  medPillRow: {
+    flexDirection: 'row',
+    marginBottom: 4,
   },
-  medNameTaken: {
-    textDecorationLine: 'line-through',
-    color: '#64748B',
+  blackDrugPill: {
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 10,
+    paddingVertical: 3,
+    borderRadius: 9999,
+  },
+  blackDrugPillText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '600',
   },
   medInstructions: {
     fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
+    color: '#6B6B6B',
   },
-  statusPill: {
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    backgroundColor: '#F1F5F9',
-    borderRadius: 6,
-  },
-  statusPillText: {
+  statusLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#64748B',
+    letterSpacing: 0.6,
+    color: '#6B6B6B',
   },
-  infoCard: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 10,
-    padding: 14,
-    marginTop: 10,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+  statusLabelTaken: {
+    color: '#1B7A3D',
   },
-  infoHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    marginBottom: 6,
-  },
-  infoTitle: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#475569',
-    textTransform: 'uppercase',
+  infoStrip: {
+    borderTopWidth: 1,
+    borderTopColor: '#E5E5E0',
+    paddingTop: 20,
+    marginTop: 12,
   },
   infoLine: {
     fontSize: 13,
-    color: '#334155',
-    lineHeight: 18,
-    marginTop: 2,
+    color: '#6B6B6B',
+    lineHeight: 20,
+    marginTop: 4,
+  },
+  infoLabel: {
+    fontWeight: '700',
+    color: '#1A1A1A',
   },
 });

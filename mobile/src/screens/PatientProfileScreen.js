@@ -1,5 +1,6 @@
 /**
  * Patient Health Profile & Electronic Health Record Screen
+ * Editorial Health-Tech Aesthetic
  */
 import React, { useState } from 'react';
 import {
@@ -10,8 +11,8 @@ import {
   TouchableOpacity,
   TextInput,
   Alert,
+  Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import { API_BASE_URL, setApiBaseUrl } from '../api/client';
 
@@ -29,49 +30,55 @@ export default function PatientProfileScreen() {
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.scrollContent}>
-      {/* Patient Demographic Card */}
-      <View style={styles.profileCard}>
-        <View style={styles.avatarCircle}>
-          <Ionicons name="person" size={28} color="#0284C7" />
+      {/* Patient Hero Name */}
+      <View style={styles.heroBlock}>
+        <Text style={styles.eyebrow}>ELECTRONIC HEALTH RECORD</Text>
+        <Text style={styles.profileName}>{profile?.name || 'Patient Record'}</Text>
+        <Text style={styles.profileMrn}>MRN: {profile?.patient_id}</Text>
+      </View>
+
+      {/* Oversized Stat Vitals Row */}
+      <View style={styles.vitalsRow}>
+        <View style={styles.vitalStat}>
+          <Text style={styles.vitalNum}>{profile?.age || '--'}</Text>
+          <Text style={styles.vitalLabel}>AGE (YRS)</Text>
         </View>
-        <View style={styles.profileInfo}>
-          <Text style={styles.profileName}>{profile?.name || 'Patient Record'}</Text>
-          <Text style={styles.profileSub}>
-            MRN: {profile?.patient_id} • Age: {profile?.age}y • {profile?.sex}
-          </Text>
-          <Text style={styles.profileWeight}>Weight: {profile?.weight} kg</Text>
+        <View style={styles.vitalStat}>
+          <Text style={styles.vitalNum}>{profile?.sex || '--'}</Text>
+          <Text style={styles.vitalLabel}>SEX</Text>
+        </View>
+        <View style={styles.vitalStat}>
+          <Text style={styles.vitalNum}>{profile?.weight || '--'}</Text>
+          <Text style={styles.vitalLabel}>WEIGHT (KG)</Text>
+        </View>
+        <View style={styles.vitalStat}>
+          <Text style={styles.vitalNum}>{profile?.medications?.length || 0}</Text>
+          <Text style={styles.vitalLabel}>ACTIVE MEDS</Text>
         </View>
       </View>
 
       {/* Allergies Section */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="warning-outline" size={18} color="#DC2626" />
-          <Text style={styles.sectionTitle}>Documented Drug Allergies</Text>
-        </View>
+      <View style={styles.sectionBlock}>
+        <Text style={styles.eyebrow}>DOCUMENTED DRUG ALLERGIES</Text>
         {profile?.allergies?.length > 0 ? (
           <View style={styles.badgeRow}>
             {profile.allergies.map((al, idx) => (
               <View key={idx} style={styles.allergyBadge}>
-                <Text style={styles.allergyBadgeText}>⚠️ {al}</Text>
+                <Text style={styles.allergyBadgeText}>{al}</Text>
               </View>
             ))}
           </View>
         ) : (
-          <Text style={styles.emptyText}>No known drug allergies (NKDA).</Text>
+          <Text style={styles.safeText}>No known drug allergies (NKDA).</Text>
         )}
       </View>
 
       {/* Active Diagnoses */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="fitness-outline" size={18} color="#0284C7" />
-          <Text style={styles.sectionTitle}>Active Clinical Diagnoses</Text>
-        </View>
+      <View style={styles.sectionBlock}>
+        <Text style={styles.eyebrow}>ACTIVE CLINICAL DIAGNOSES</Text>
         {profile?.conditions?.length > 0 ? (
           profile.conditions.map((cond, idx) => (
-            <View key={idx} style={styles.conditionItem}>
-              <Text style={styles.bulletDot}>•</Text>
+            <View key={idx} style={styles.conditionRow}>
               <Text style={styles.conditionText}>{cond}</Text>
             </View>
           ))
@@ -81,17 +88,14 @@ export default function PatientProfileScreen() {
       </View>
 
       {/* Active Medications List */}
-      <View style={styles.sectionCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="medkit-outline" size={18} color="#16A34A" />
-          <Text style={styles.sectionTitle}>Active Prescriptions ({profile?.medications?.length || 0})</Text>
-        </View>
+      <View style={styles.sectionBlock}>
+        <Text style={styles.eyebrow}>ACTIVE PRESCRIPTIONS</Text>
         {profile?.medications?.map((m, idx) => (
           <View key={idx} style={styles.medicationRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.medRowName}>{m.drug_name}</Text>
               <Text style={styles.medRowSub}>
-                Generic: {m.normalized_name} (RxCUI: {m.rxcui || 'N/A'})
+                Generic: {m.normalized_name} • RxCUI {m.rxcui || 'N/A'}
               </Text>
               <Text style={styles.medRowDose}>
                 {m.dose} {m.dose_unit} • {m.frequency} ({m.route})
@@ -107,36 +111,37 @@ export default function PatientProfileScreen() {
 
       {/* Diagnostic Lab Tests */}
       {profile?.lab_results?.length > 0 && (
-        <View style={styles.sectionCard}>
-          <View style={styles.sectionHeader}>
-            <Ionicons name="flask-outline" size={18} color="#7C3AED" />
-            <Text style={styles.sectionTitle}>Recent Laboratory Biomarkers</Text>
-          </View>
+        <View style={styles.sectionBlock}>
+          <Text style={styles.eyebrow}>RECENT LABORATORY BIOMARKERS</Text>
           {profile.lab_results.map((lab, idx) => (
             <View key={idx} style={styles.labRow}>
               <Text style={styles.labName}>{lab.test}</Text>
               <View style={styles.labValWrap}>
-                <Text style={[styles.labValue, lab.is_abnormal && { color: '#DC2626', fontWeight: '800' }]}>
+                <Text
+                  style={[
+                    styles.labValue,
+                    lab.is_abnormal && { color: '#DC2626', fontWeight: '700' },
+                  ]}
+                >
                   {lab.value} {lab.unit}
                 </Text>
-                {lab.is_abnormal && <Text style={styles.abnormalBadge}>ABNORMAL</Text>}
+                {lab.is_abnormal && (
+                  <View style={styles.abnormalBadge}>
+                    <Text style={styles.abnormalBadgeText}>ABNORMAL</Text>
+                  </View>
+                )}
               </View>
             </View>
           ))}
         </View>
       )}
 
-      {/* Server Connection Settings (Helpful for Hackathon testing on real phones) */}
-      <View style={styles.settingsCard}>
-        <View style={styles.sectionHeader}>
-          <Ionicons name="server-outline" size={16} color="#64748B" />
-          <Text style={styles.settingsTitle}>Backend Server Connection</Text>
-        </View>
-        <Text style={styles.serverInfo}>
-          Current API Base: <Text style={{ fontWeight: '700' }}>{API_BASE_URL}</Text>
-        </Text>
+      {/* Server Connection Settings */}
+      <View style={styles.settingsBlock}>
+        <Text style={styles.eyebrow}>BACKEND API ENDPOINT</Text>
+        <Text style={styles.serverInfo}>{API_BASE_URL}</Text>
         {editingServer ? (
-          <View style={{ marginTop: 8 }}>
+          <View style={{ marginTop: 10 }}>
             <TextInput
               style={styles.serverInput}
               value={serverUrl}
@@ -144,9 +149,9 @@ export default function PatientProfileScreen() {
               placeholder="http://192.168.1.XX:8000"
               autoCapitalize="none"
             />
-            <View style={{ flexDirection: 'row', gap: 8, marginTop: 8 }}>
+            <View style={{ flexDirection: 'row', gap: 10, marginTop: 10 }}>
               <TouchableOpacity style={styles.saveServerBtn} onPress={handleSaveServer}>
-                <Text style={styles.saveServerBtnText}>Save</Text>
+                <Text style={styles.saveServerBtnText}>Save Endpoint</Text>
               </TouchableOpacity>
               <TouchableOpacity
                 style={styles.cancelServerBtn}
@@ -161,7 +166,7 @@ export default function PatientProfileScreen() {
             style={styles.changeServerBtn}
             onPress={() => setEditingServer(true)}
           >
-            <Text style={styles.changeServerBtnText}>Change Host IP (For Physical Expo Go)</Text>
+            <Text style={styles.changeServerBtnText}>Configure Host IP for Expo Go</Text>
           </TouchableOpacity>
         )}
       </View>
@@ -172,138 +177,123 @@ export default function PatientProfileScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    padding: 18,
-    paddingBottom: 40,
+    padding: 20,
+    paddingBottom: 44,
   },
-  profileCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 16,
-    shadowColor: '#000',
-    shadowOpacity: 0.03,
-    shadowOffset: { width: 0, height: 1 },
-    shadowRadius: 2,
-    elevation: 1,
+  heroBlock: {
+    marginBottom: 20,
   },
-  avatarCircle: {
-    width: 52,
-    height: 52,
-    borderRadius: 26,
-    backgroundColor: '#F0F9FF',
-    borderWidth: 1,
-    borderColor: '#BAE6FD',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 14,
-  },
-  profileInfo: {
-    flex: 1,
+  eyebrow: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginBottom: 6,
   },
   profileName: {
-    fontSize: 16,
-    fontWeight: '800',
-    color: '#0F172A',
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    letterSpacing: -0.5,
   },
-  profileSub: {
+  profileMrn: {
     fontSize: 12,
-    color: '#64748B',
-    marginTop: 2,
+    fontFamily: 'monospace',
+    color: '#6B6B6B',
+    marginTop: 4,
   },
-  profileWeight: {
-    fontSize: 12,
-    color: '#0284C7',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  sectionCard: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 12,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginBottom: 14,
-  },
-  sectionHeader: {
+  vitalsRow: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    marginBottom: 10,
+    justifyContent: 'space-between',
+    borderTopWidth: 1,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
-    paddingBottom: 8,
+    borderColor: '#E5E5E0',
+    paddingVertical: 18,
+    marginBottom: 28,
   },
-  sectionTitle: {
-    fontSize: 14,
-    fontWeight: '800',
-    color: '#0F172A',
+  vitalStat: {
+    flex: 1,
+  },
+  vitalNum: {
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#1A1A1A',
+  },
+  vitalLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginTop: 4,
+  },
+  sectionBlock: {
+    marginBottom: 28,
   },
   badgeRow: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 6,
+    gap: 8,
+    marginTop: 4,
   },
   allergyBadge: {
-    backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#FECACA',
-    borderRadius: 6,
+    borderColor: '#DC2626',
+    borderRadius: 9999,
     paddingVertical: 4,
-    paddingHorizontal: 10,
+    paddingHorizontal: 12,
   },
   allergyBadgeText: {
     color: '#DC2626',
-    fontWeight: '700',
+    fontWeight: '600',
     fontSize: 12,
+  },
+  safeText: {
+    color: '#1B7A3D',
+    fontSize: 13,
+    fontWeight: '500',
+    marginTop: 2,
   },
   emptyText: {
-    color: '#94A3B8',
-    fontSize: 12,
+    color: '#6B6B6B',
+    fontSize: 13,
   },
-  conditionItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 4,
-  },
-  bulletDot: {
-    color: '#0284C7',
-    fontSize: 16,
-    marginRight: 8,
+  conditionRow: {
+    paddingVertical: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E5E5E0',
   },
   conditionText: {
-    fontSize: 13,
-    color: '#334155',
-    fontWeight: '600',
+    fontSize: 14,
+    color: '#1A1A1A',
+    fontWeight: '500',
   },
   medicationRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: 10,
+    paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#E5E5E0',
   },
   medRowName: {
-    fontSize: 14,
+    fontSize: 15,
     fontWeight: '700',
-    color: '#0F172A',
+    color: '#1A1A1A',
   },
   medRowSub: {
     fontSize: 11,
-    color: '#64748B',
-    marginTop: 1,
+    color: '#6B6B6B',
+    marginTop: 2,
   },
   medRowDose: {
     fontSize: 12,
-    color: '#16A34A',
+    color: '#1B7A3D',
     fontWeight: '600',
-    marginTop: 2,
+    marginTop: 4,
   },
   medDateBlock: {
     alignItems: 'flex-end',
@@ -312,101 +302,101 @@ const styles = StyleSheet.create({
   medDateLabel: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#94A3B8',
+    color: '#6B6B6B',
+    letterSpacing: 0.6,
   },
   medDateVal: {
     fontSize: 11,
-    color: '#475569',
-    fontWeight: '600',
+    fontFamily: 'monospace',
+    color: '#1A1A1A',
+    marginTop: 2,
   },
   labRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 10,
     borderBottomWidth: 1,
-    borderBottomColor: '#F8FAFC',
+    borderBottomColor: '#E5E5E0',
   },
   labName: {
     fontSize: 13,
     fontWeight: '600',
-    color: '#334155',
+    color: '#1A1A1A',
   },
   labValWrap: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 6,
+    gap: 8,
   },
   labValue: {
     fontSize: 13,
     fontFamily: 'monospace',
-    color: '#0F172A',
+    color: '#1A1A1A',
   },
   abnormalBadge: {
-    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#DC2626',
+    borderRadius: 9999,
+    paddingVertical: 2,
+    paddingHorizontal: 8,
+  },
+  abnormalBadgeText: {
     color: '#DC2626',
     fontSize: 9,
-    fontWeight: '800',
-    paddingVertical: 2,
-    paddingHorizontal: 6,
-    borderRadius: 4,
-  },
-  settingsCard: {
-    backgroundColor: '#F1F5F9',
-    borderRadius: 10,
-    padding: 14,
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
-    marginTop: 4,
-  },
-  settingsTitle: {
-    fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
+    letterSpacing: 0.6,
+  },
+  settingsBlock: {
+    backgroundColor: '#F5F5F0',
+    padding: 16,
+    marginTop: 8,
   },
   serverInfo: {
-    fontSize: 11,
-    color: '#64748B',
-    marginTop: 4,
+    fontSize: 12,
+    fontFamily: 'monospace',
+    color: '#1A1A1A',
+    marginTop: 2,
   },
   serverInput: {
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#CBD5E1',
-    borderRadius: 6,
+    borderColor: '#E5E5E0',
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 8,
     fontSize: 13,
-    color: '#0F172A',
+    color: '#1A1A1A',
   },
   saveServerBtn: {
-    backgroundColor: '#0284C7',
-    paddingVertical: 6,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 6,
+    borderRadius: 9999,
   },
   saveServerBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '700',
+    fontWeight: '600',
   },
   cancelServerBtn: {
-    backgroundColor: '#E2E8F0',
-    paddingVertical: 6,
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 8,
     paddingHorizontal: 16,
-    borderRadius: 6,
+    borderRadius: 9999,
   },
   cancelServerBtnText: {
-    color: '#475569',
+    color: '#1A1A1A',
     fontSize: 12,
     fontWeight: '600',
   },
   changeServerBtn: {
-    marginTop: 6,
+    marginTop: 8,
   },
   changeServerBtnText: {
     fontSize: 11,
-    color: '#0284C7',
+    color: '#1B7A3D',
     fontWeight: '700',
   },
 });

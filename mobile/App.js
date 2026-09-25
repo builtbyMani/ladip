@@ -1,9 +1,9 @@
 /**
- * LADIP Patient Mobile App - Entry Point
- * Built with Expo React Native, Patient Safety Copilot, and Prescription Scanner.
+ * LADIP Patient Mobile App — Entry Point
+ * Editorial Health-Tech Aesthetic (Bella-inspired, clean white surfaces, black pill CTAs, forest green accents)
  */
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
@@ -19,12 +19,10 @@ function MainAppContent() {
   const [activeTab, setActiveTab] = useState('Schedule');
   const { alerts } = usePatient();
 
-  // Active critical alert badge count
   const criticalCount = alerts?.filter(
     (a) => (a.severity_tier === 'CRITICAL' || a.severity_tier === 'HIGH') && !a.is_suppressed
   ).length || 0;
 
-  // Navigation mock object to pass to screens
   const navigation = {
     navigate: (tabName) => setActiveTab(tabName),
   };
@@ -46,11 +44,11 @@ function MainAppContent() {
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar style="light" backgroundColor="#0F172A" />
+      <StatusBar style="dark" backgroundColor="#FFFFFF" />
       <Header />
       <View style={styles.screenContainer}>{renderActiveScreen()}</View>
 
-      {/* Bottom Navigation Bar */}
+      {/* Editorial Bottom Navigation Bar */}
       <View style={styles.tabBar}>
         {/* Tab 1: Today Schedule */}
         <TouchableOpacity
@@ -60,8 +58,8 @@ function MainAppContent() {
         >
           <Ionicons
             name={activeTab === 'Schedule' ? 'calendar' : 'calendar-outline'}
-            size={22}
-            color={activeTab === 'Schedule' ? '#0284C7' : '#64748B'}
+            size={21}
+            color={activeTab === 'Schedule' ? '#1A1A1A' : '#6B6B6B'}
           />
           <Text style={[styles.tabLabel, activeTab === 'Schedule' && styles.tabLabelActive]}>
             Schedule
@@ -77,8 +75,8 @@ function MainAppContent() {
           <View>
             <Ionicons
               name={activeTab === 'Checker' ? 'shield-checkmark' : 'shield-checkmark-outline'}
-              size={22}
-              color={activeTab === 'Checker' ? '#0284C7' : '#64748B'}
+              size={21}
+              color={activeTab === 'Checker' ? '#1A1A1A' : '#6B6B6B'}
             />
             {criticalCount > 0 && (
               <View style={styles.badgeCount}>
@@ -91,14 +89,14 @@ function MainAppContent() {
           </Text>
         </TouchableOpacity>
 
-        {/* Tab 3: Scan Prescription (Prominent Center Button) */}
+        {/* Tab 3: Scan Prescription (Black Pill Center Button) */}
         <TouchableOpacity
           style={styles.scanTabBtn}
           onPress={() => setActiveTab('Scanner')}
-          activeOpacity={0.8}
+          activeOpacity={0.85}
         >
           <View style={styles.scanTabInner}>
-            <Ionicons name="scan" size={24} color="#FFFFFF" />
+            <Ionicons name="scan" size={22} color="#FFFFFF" />
           </View>
           <Text style={[styles.tabLabel, activeTab === 'Scanner' && styles.tabLabelActive]}>
             Scan Rx
@@ -113,8 +111,8 @@ function MainAppContent() {
         >
           <Ionicons
             name={activeTab === 'Profile' ? 'person' : 'person-outline'}
-            size={22}
-            color={activeTab === 'Profile' ? '#0284C7' : '#64748B'}
+            size={21}
+            color={activeTab === 'Profile' ? '#1A1A1A' : '#6B6B6B'}
           />
           <Text style={[styles.tabLabel, activeTab === 'Profile' && styles.tabLabelActive]}>
             Profile
@@ -138,41 +136,37 @@ export default function App() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: '#0F172A',
+    backgroundColor: '#FFFFFF',
   },
   screenContainer: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
   },
   tabBar: {
     flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingVertical: 8,
+    borderTopColor: '#E5E5E0',
+    paddingVertical: 10,
     paddingHorizontal: 12,
     alignItems: 'center',
     justifyContent: 'space-around',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: -2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 4,
   },
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: 4,
+    paddingVertical: 2,
     flex: 1,
   },
   tabLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: '600',
-    color: '#64748B',
-    marginTop: 3,
+    color: '#6B6B6B',
+    marginTop: 4,
+    letterSpacing: 0.2,
   },
   tabLabelActive: {
-    color: '#0284C7',
+    color: '#1A1A1A',
     fontWeight: '800',
   },
   scanTabBtn: {
@@ -184,15 +178,10 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: '#0284C7',
+    backgroundColor: '#1A1A1A',
     alignItems: 'center',
     justifyContent: 'center',
-    marginTop: -16,
-    shadowColor: '#0284C7',
-    shadowOffset: { width: 0, height: 3 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 4,
+    marginTop: -14,
   },
   badgeCount: {
     position: 'absolute',
