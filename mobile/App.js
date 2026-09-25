@@ -3,9 +3,9 @@
  * Editorial Health-Tech Aesthetic (Bella-inspired, clean white surfaces, black pill CTAs, forest green accents)
  */
 import React, { useState } from 'react';
-import { StyleSheet, View, Text, TouchableOpacity, SafeAreaView, Platform } from 'react-native';
+import { StyleSheet, View, Text, TouchableOpacity, Platform, StatusBar as RNStatusBar } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
+import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 
 import { PatientProvider, usePatient } from './src/context/PatientContext';
@@ -137,6 +137,7 @@ const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
     backgroundColor: '#FFFFFF',
+    paddingTop: Platform.OS === 'android' ? (RNStatusBar.currentHeight || 20) : 0,
   },
   screenContainer: {
     flex: 1,
