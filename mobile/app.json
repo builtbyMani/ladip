@@ -1,0 +1,34 @@
+{
+  "expo": {
+    "name": "LADIP Patient",
+    "slug": "ladip-patient",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "splash": {
+      "backgroundColor": "#0F172A"
+    },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#0F172A"
+      }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "LADIP needs photo library access to scan prescriptions and lab reports.",
+          "cameraPermission": "LADIP needs camera access to capture prescription photos for drug interaction scanning."
+        }
+      ],
+      "expo-asset"
+    ]
+  }
+}

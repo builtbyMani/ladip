@@ -1,0 +1,81 @@
+{
+  "patient_id": "PT_STATIN_002",
+  "age": 62,
+  "sex": "F",
+  "weight": 66.0,
+  "allergies": [],
+  "conditions": [
+    "Hyperlipidemia",
+    "Essential Hypertension",
+    "Ventricular Premature Beats"
+  ],
+  "medications": [
+    {
+      "drug_name": "Simvastatin",
+      "normalized_name": "simvastatin",
+      "rxcui": "36567",
+      "dose": 40.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2025-09-17",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Amlodipine",
+      "normalized_name": "amlodipine",
+      "rxcui": "17767",
+      "dose": 10.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2025-09-17",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Amiodarone",
+      "normalized_name": "amiodarone",
+      "rxcui": "703",
+      "dose": 200.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-09-09",
+      "end_date": null,
+      "prescriber": null
+    }
+  ],
+  "symptoms": [
+    {
+      "description": "Severe Myopathy & Dark Urine",
+      "meddra_term": "rhabdomyolysis",
+      "severity": 9,
+      "onset_date": "2026-09-14",
+      "resolution_date": null,
+      "daily_pattern": null
+    }
+  ],
+  "lab_results": [
+    {
+      "test": "Creatine Kinase (CK)",
+      "value": 4820.0,
+      "unit": "U/L",
+      "is_abnormal": true
+    },
+    {
+      "test": "Serum Creatinine",
+      "value": 2.1,
+      "unit": "mg/dL",
+      "is_abnormal": true
+    },
+    {
+      "test": "ALT",
+      "value": 115.0,
+      "unit": "U/L",
+      "is_abnormal": true
+    }
+  ],
+  "name": "Sunita Patel (Dyslipidemia / Ventricular Arrhythmia)"
+}

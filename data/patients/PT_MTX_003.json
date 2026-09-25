@@ -1,0 +1,82 @@
+{
+  "patient_id": "PT_MTX_003",
+  "age": 54,
+  "sex": "F",
+  "weight": 58.0,
+  "allergies": [
+    "Sulfa"
+  ],
+  "conditions": [
+    "Seropositive Rheumatoid Arthritis",
+    "Recurrent Urinary Tract Infection"
+  ],
+  "medications": [
+    {
+      "drug_name": "Methotrexate",
+      "normalized_name": "methotrexate",
+      "rxcui": "6851",
+      "dose": 15.0,
+      "dose_unit": "mg",
+      "frequency": "weekly",
+      "route": "oral",
+      "start_date": "2026-01-20",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Naproxen",
+      "normalized_name": "naproxen",
+      "rxcui": "7258",
+      "dose": 500.0,
+      "dose_unit": "mg",
+      "frequency": "BID",
+      "route": "oral",
+      "start_date": "2026-01-20",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Trimethoprim-Sulfamethoxazole",
+      "normalized_name": "trimethoprim-sulfamethoxazole",
+      "rxcui": "10528",
+      "dose": 800.0,
+      "dose_unit": "mg",
+      "frequency": "BID",
+      "route": "oral",
+      "start_date": "2026-09-10",
+      "end_date": null,
+      "prescriber": null
+    }
+  ],
+  "symptoms": [
+    {
+      "description": "Profound Fatigue and Petechiae (Pancytopenia)",
+      "meddra_term": "pancytopenia",
+      "severity": 10,
+      "onset_date": "2026-09-15",
+      "resolution_date": null,
+      "daily_pattern": null
+    }
+  ],
+  "lab_results": [
+    {
+      "test": "WBC",
+      "value": 1.2,
+      "unit": "10^3/uL",
+      "is_abnormal": true
+    },
+    {
+      "test": "Platelets",
+      "value": 28,
+      "unit": "10^3/uL",
+      "is_abnormal": true
+    },
+    {
+      "test": "RBC",
+      "value": 2.4,
+      "unit": "10^6/uL",
+      "is_abnormal": true
+    }
+  ],
+  "name": "Kavitha Reddy (Rheumatoid Arthritis / UTI)"
+}

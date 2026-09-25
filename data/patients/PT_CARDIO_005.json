@@ -1,0 +1,74 @@
+{
+  "patient_id": "PT_CARDIO_005",
+  "age": 52,
+  "sex": "M",
+  "weight": 76.0,
+  "allergies": [],
+  "conditions": [
+    "Coronary Artery Disease (s/p DES Stent)",
+    "GERD"
+  ],
+  "medications": [
+    {
+      "drug_name": "Clopidogrel",
+      "normalized_name": "clopidogrel",
+      "rxcui": "32968",
+      "dose": 75.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-08-03",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Omeprazole",
+      "normalized_name": "omeprazole",
+      "rxcui": "7646",
+      "dose": 20.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-08-18",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Aspirin",
+      "normalized_name": "aspirin",
+      "rxcui": "1191",
+      "dose": 81.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-08-03",
+      "end_date": null,
+      "prescriber": null
+    }
+  ],
+  "symptoms": [
+    {
+      "description": "Exertional Chest Tightness",
+      "meddra_term": "myocardial infarction",
+      "severity": 7,
+      "onset_date": "2026-09-13",
+      "resolution_date": null,
+      "daily_pattern": null
+    }
+  ],
+  "lab_results": [
+    {
+      "test": "Troponin-I",
+      "value": 0.08,
+      "unit": "ng/mL",
+      "is_abnormal": true
+    },
+    {
+      "test": "Platelet Reactivity Units (PRU)",
+      "value": 260,
+      "unit": "",
+      "is_abnormal": true
+    }
+  ],
+  "name": "Arjun Nair (Post-PCI Stent / Acid Reflux)"
+}

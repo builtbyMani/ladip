@@ -1,0 +1,83 @@
+{
+  "patient_id": "PT_BLEED_001",
+  "age": 68,
+  "sex": "M",
+  "weight": 72.5,
+  "allergies": [
+    "Penicillin"
+  ],
+  "conditions": [
+    "Atrial Fibrillation",
+    "Hypertension",
+    "Bilateral Knee Osteoarthritis"
+  ],
+  "medications": [
+    {
+      "drug_name": "Warfarin",
+      "normalized_name": "warfarin",
+      "rxcui": "11289",
+      "dose": 5.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-03-21",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Aspirin",
+      "normalized_name": "aspirin",
+      "rxcui": "1191",
+      "dose": 81.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2026-03-21",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Ibuprofen",
+      "normalized_name": "ibuprofen",
+      "rxcui": "5640",
+      "dose": 600.0,
+      "dose_unit": "mg",
+      "frequency": "TID",
+      "route": "oral",
+      "start_date": "2026-09-12",
+      "end_date": null,
+      "prescriber": null
+    }
+  ],
+  "symptoms": [
+    {
+      "description": "Gastrointestinal Hemorrhage",
+      "meddra_term": "gastrointestinal hemorrhage",
+      "severity": 9,
+      "onset_date": "2026-09-15",
+      "resolution_date": null,
+      "daily_pattern": "constant"
+    }
+  ],
+  "lab_results": [
+    {
+      "test": "Hemoglobin",
+      "value": 8.1,
+      "unit": "g/dL",
+      "is_abnormal": true
+    },
+    {
+      "test": "INR",
+      "value": 3.8,
+      "unit": "",
+      "is_abnormal": true
+    },
+    {
+      "test": "Platelet Count",
+      "value": 210,
+      "unit": "10^3/uL",
+      "is_abnormal": false
+    }
+  ],
+  "name": "Ramesh Sharma (Atrial Fibrillation / Osteoarthritis)"
+}

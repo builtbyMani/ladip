@@ -1,0 +1,72 @@
+{
+  "patient_id": "PT_STABLE_004",
+  "age": 58,
+  "sex": "M",
+  "weight": 81.0,
+  "allergies": [],
+  "conditions": [
+    "Type 2 Diabetes Mellitus",
+    "Primary Hypertension",
+    "Dyslipidemia"
+  ],
+  "medications": [
+    {
+      "drug_name": "Metformin",
+      "normalized_name": "metformin",
+      "rxcui": "6809",
+      "dose": 1000.0,
+      "dose_unit": "mg",
+      "frequency": "BID",
+      "route": "oral",
+      "start_date": "2024-09-17",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Lisinopril",
+      "normalized_name": "lisinopril",
+      "rxcui": "29046",
+      "dose": 20.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2024-09-17",
+      "end_date": null,
+      "prescriber": null
+    },
+    {
+      "drug_name": "Atorvastatin",
+      "normalized_name": "atorvastatin",
+      "rxcui": "83367",
+      "dose": 40.0,
+      "dose_unit": "mg",
+      "frequency": "QD",
+      "route": "oral",
+      "start_date": "2024-09-17",
+      "end_date": null,
+      "prescriber": null
+    }
+  ],
+  "symptoms": [],
+  "lab_results": [
+    {
+      "test": "HbA1c",
+      "value": 6.7,
+      "unit": "%",
+      "is_abnormal": false
+    },
+    {
+      "test": "eGFR",
+      "value": 92.0,
+      "unit": "mL/min/1.73m2",
+      "is_abnormal": false
+    },
+    {
+      "test": "Serum Creatinine",
+      "value": 0.92,
+      "unit": "mg/dL",
+      "is_abnormal": false
+    }
+  ],
+  "name": "Rajesh Varma (Stable T2D / HTN - 2yr Cohort)"
+}
