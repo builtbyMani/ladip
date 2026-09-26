@@ -1,0 +1,15 @@
+{
+  "name": "ladip-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "description": "LADIP - Longitudinal Adverse Drug Interaction Predictor",
+  "scripts": {
+    "build": "npm --prefix web run build",
+    "dev": "npm --prefix web run dev",
+    "dev:web": "npm --prefix web run dev",
+    "dev:mobile": "npm --prefix mobile start",
+    "dev:backend": "python3 -m uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload",
+    "lint": "npm --prefix web run lint",
+    "start": "npm --prefix web run start"
+  }
+}
