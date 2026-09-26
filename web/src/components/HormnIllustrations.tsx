@@ -526,3 +526,216 @@ export const TelehealthDeviceIllustration = memo(function TelehealthDeviceIllust
     </svg>
   );
 });
+
+export interface PatientPersonaMeta {
+  id: string;
+  shortName: string;
+  roleTag: string;
+  regimenShort: string;
+  riskLabel: string;
+  riskColor: string;
+  ringColor: string;
+  bgSoft: string;
+  accentHex: string;
+}
+
+export const PATIENT_PERSONA_META: Record<string, PatientPersonaMeta> = {
+  PT_BLEED_001: {
+    id: "PT_BLEED_001",
+    shortName: "Ramesh Sharma",
+    roleTag: "68M • AFib & Osteoarthritis",
+    regimenShort: "Warfarin + Aspirin + Ibuprofen",
+    riskLabel: "Critical Bleed Synergy",
+    riskColor: "bg-red-50 text-[#DC2626] border-red-200",
+    ringColor: "ring-[#3B6EA8]",
+    bgSoft: "bg-[#EAF2FA]",
+    accentHex: "#3B6EA8",
+  },
+  PT_STATIN_002: {
+    id: "PT_STATIN_002",
+    shortName: "Sunita Patel",
+    roleTag: "62F • Dyslipidemia & Arrhythmia",
+    regimenShort: "Simvastatin + Amlodipine + Amiodarone",
+    riskLabel: "CYP3A4 Myopathy Risk",
+    riskColor: "bg-amber-50 text-[#B45309] border-amber-200",
+    ringColor: "ring-[#8C6239]",
+    bgSoft: "bg-[#F5F2EB]",
+    accentHex: "#8C6239",
+  },
+  PT_MTX_003: {
+    id: "PT_MTX_003",
+    shortName: "Kavitha Reddy",
+    roleTag: "54F • Rheumatoid Arthritis",
+    regimenShort: "Methotrexate + Bactrim + Naproxen",
+    riskLabel: "Renal Clearance Block",
+    riskColor: "bg-purple-50 text-[#5E4FA2] border-purple-200",
+    ringColor: "ring-[#5E4FA2]",
+    bgSoft: "bg-[#F0EDF8]",
+    accentHex: "#5E4FA2",
+  },
+  PT_CARDIO_005: {
+    id: "PT_CARDIO_005",
+    shortName: "Arjun Nair",
+    roleTag: "59M • Post-PCI Coronary Stent",
+    regimenShort: "Clopidogrel + Omeprazole + Atorvastatin",
+    riskLabel: "CYP2C19 Inhibition",
+    riskColor: "bg-rose-50 text-[#BE123C] border-rose-200",
+    ringColor: "ring-[#BE123C]",
+    bgSoft: "bg-[#FFF1F2]",
+    accentHex: "#BE123C",
+  },
+  PT_STABLE_004: {
+    id: "PT_STABLE_004",
+    shortName: "Rajesh Varma",
+    roleTag: "71M • 2-Yr Stable Hypertension",
+    regimenShort: "Lisinopril + Metformin + Atorvastatin",
+    riskLabel: "100% Noise Suppressed",
+    riskColor: "bg-emerald-50 text-[#1B7A3D] border-emerald-200",
+    ringColor: "ring-[#1B7A3D]",
+    bgSoft: "bg-[#EAF5F0]",
+    accentHex: "#1B7A3D",
+  },
+};
+
+export function getPatientPersona(patientId: string, fallbackName?: string): PatientPersonaMeta {
+  if (PATIENT_PERSONA_META[patientId]) {
+    return PATIENT_PERSONA_META[patientId];
+  }
+  const cleanName = (fallbackName || patientId).split("(")[0].trim();
+  return {
+    id: patientId,
+    shortName: cleanName,
+    roleTag: "Custom Parsed EHR Cohort",
+    regimenShort: "OCR Reconstructed Regimen",
+    riskLabel: "Live Timeline Active",
+    riskColor: "bg-blue-50 text-[#3B6EA8] border-blue-200",
+    ringColor: "ring-[#3B6EA8]",
+    bgSoft: "bg-[#EAF2FA]",
+    accentHex: "#3B6EA8",
+  };
+}
+
+/**
+ * Bespoke Illustrated SVG Avatar for each Indian patient cohort profile
+ */
+export const PatientCohortAvatar = memo(function PatientCohortAvatar({
+  patientId,
+  size = "md",
+  showStatusBadge = true,
+}: {
+  patientId: string;
+  size?: "xs" | "sm" | "md" | "lg";
+  showStatusBadge?: boolean;
+}) {
+  const sizeClasses =
+    size === "xs"
+      ? "w-6 h-6"
+      : size === "sm"
+      ? "w-8 h-8"
+      : size === "lg"
+      ? "w-14 h-14"
+      : "w-10 h-10";
+
+  const badgeDotSize =
+    size === "xs"
+      ? "w-2 h-2"
+      : size === "sm"
+      ? "w-2.5 h-2.5"
+      : size === "lg"
+      ? "w-4 h-4"
+      : "w-3 h-3";
+
+  const badgeColor =
+    patientId === "PT_STABLE_004"
+      ? "bg-[#00B67A]"
+      : patientId === "PT_STATIN_002"
+      ? "bg-amber-500"
+      : patientId === "PT_MTX_003"
+      ? "bg-[#5E4FA2]"
+      : "bg-[#DC2626]";
+
+  return (
+    <span className={`relative inline-flex items-center justify-center shrink-0 select-none ${sizeClasses}`}>
+      {patientId === "PT_BLEED_001" ? (
+        /* Ramesh Sharma: 68M Senior Gentleman with Silver Hair, Glasses & Navy Collar */
+        <svg viewBox="0 0 64 64" className="w-full h-full rounded-full shadow-xs" fill="none">
+          <circle cx="32" cy="32" r="32" fill="#DCEBFA" />
+          <path d="M12 58C12 45 20 39 32 39C44 39 52 45 52 58" fill="#1E3A8A" />
+          <path d="M26 39L32 49L38 39" fill="#FFFFFF" />
+          <circle cx="32" cy="24" r="11.5" fill="#D9A17C" />
+          {/* Silver hair */}
+          <path d="M20 22C20 14 25 11 32 11C39 11 44 14 44 22C42 17 38 15 32 15C26 15 22 17 20 22Z" fill="#E2E8F0" />
+          {/* Glasses */}
+          <rect x="23.5" y="21.5" width="7" height="5" rx="1.5" stroke="#1E293B" strokeWidth="1.5" fill="#FFFFFF" fillOpacity="0.35" />
+          <rect x="33.5" y="21.5" width="7" height="5" rx="1.5" stroke="#1E293B" strokeWidth="1.5" fill="#FFFFFF" fillOpacity="0.35" />
+          <line x1="30.5" y1="24" x2="33.5" y2="24" stroke="#1E293B" strokeWidth="1.5" />
+          {/* Gentle mustache & smile */}
+          <path d="M28 30.5C30 29.5 34 29.5 36 30.5" stroke="#94A3B8" strokeWidth="2" strokeLinecap="round" />
+        </svg>
+      ) : patientId === "PT_STATIN_002" ? (
+        /* Sunita Patel: 62F Indian Woman with Dark Bun, Bindi & Warm Amber Saree Drape */
+        <svg viewBox="0 0 64 64" className="w-full h-full rounded-full shadow-xs" fill="none">
+          <circle cx="32" cy="32" r="32" fill="#F5EBE1" />
+          <circle cx="32" cy="12" r="6" fill="#1E293B" />
+          <path d="M12 58C12 45 20 39 32 39C44 39 52 45 52 58" fill="#9A6B3B" />
+          <path d="M18 43L38 58H14L18 43Z" fill="#D97706" fillOpacity="0.45" />
+          <circle cx="32" cy="25" r="11" fill="#DCA682" />
+          {/* Hair parted */}
+          <path d="M21 24C21 15 26 12 32 12C38 12 43 15 43 24C40 18 36 16.5 32 16.5C28 16.5 24 18 21 24Z" fill="#1E293B" />
+          {/* Bindi */}
+          <circle cx="32" cy="20.5" r="1.4" fill="#DC2626" />
+          {/* Eyes & warm smile */}
+          <circle cx="28" cy="24.5" r="1.2" fill="#1E293B" />
+          <circle cx="36" cy="24.5" r="1.2" fill="#1E293B" />
+          <path d="M29 29.5C30.5 31 33.5 31 35 29.5" stroke="#7C2D12" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      ) : patientId === "PT_MTX_003" ? (
+        /* Kavitha Reddy: 54F Woman with Wavy Hair, Round Glasses & Lavender Attire */
+        <svg viewBox="0 0 64 64" className="w-full h-full rounded-full shadow-xs" fill="none">
+          <circle cx="32" cy="32" r="32" fill="#EDE9FE" />
+          <path d="M18 25C16 32 17 40 22 43H42C47 40 48 32 46 25" fill="#1E1B4B" />
+          <path d="M12 58C12 45 20 39 32 39C44 39 52 45 52 58" fill="#5E4FA2" />
+          <circle cx="32" cy="25" r="11" fill="#C98E6B" />
+          <path d="M21 24C21 15 25.5 12 32 12C38.5 12 43 15 43 24C39 18.5 35 17 32 17C29 17 25 18.5 21 24Z" fill="#1E1B4B" />
+          <circle cx="32" cy="20.5" r="1.2" fill="#5E4FA2" />
+          <circle cx="27.5" cy="24.5" r="3.2" stroke="#312E81" strokeWidth="1.3" fill="#FFFFFF" fillOpacity="0.25" />
+          <circle cx="36.5" cy="24.5" r="3.2" stroke="#312E81" strokeWidth="1.3" fill="#FFFFFF" fillOpacity="0.25" />
+          <line x1="30.7" y1="24.5" x2="33.3" y2="24.5" stroke="#312E81" strokeWidth="1.3" />
+          <path d="M29.5 30C31 31.2 33 31.2 34.5 30" stroke="#4C1D95" strokeWidth="1.4" strokeLinecap="round" />
+        </svg>
+      ) : patientId === "PT_CARDIO_005" ? (
+        /* Arjun Nair: 59M Man with Neat Beard & Charcoal Collar */
+        <svg viewBox="0 0 64 64" className="w-full h-full rounded-full shadow-xs" fill="none">
+          <circle cx="32" cy="32" r="32" fill="#FFE4E6" />
+          <path d="M12 58C12 45 20 39 32 39C44 39 52 45 52 58" fill="#1F2937" />
+          <path d="M27 39L32 50L37 39" fill="#BE123C" />
+          <circle cx="32" cy="24" r="11.5" fill="#C48764" />
+          {/* Dark hair */}
+          <path d="M20.5 22C20.5 14 25.5 11 32 11C38.5 11 43.5 14 43.5 22C41 17 37 15.5 32 15.5C27 15.5 23 17 20.5 22Z" fill="#111827" />
+          {/* Eyes */}
+          <circle cx="28" cy="23.5" r="1.3" fill="#111827" />
+          <circle cx="36" cy="23.5" r="1.3" fill="#111827" />
+          {/* Neat beard */}
+          <path d="M22.5 27.5C23.5 33.5 27.5 36 32 36C36.5 36 40.5 33.5 41.5 27.5C39 30 35.5 31 32 31C28.5 31 25 30 22.5 27.5Z" fill="#1F2937" fillOpacity="0.88" />
+        </svg>
+      ) : (
+        /* Rajesh Varma (PT_STABLE_004) or Default: 71M Smiling Senior in Forest Green */
+        <svg viewBox="0 0 64 64" className="w-full h-full rounded-full shadow-xs" fill="none">
+          <circle cx="32" cy="32" r="32" fill="#D1FAE5" />
+          <path d="M12 58C12 45 20 39 32 39C44 39 52 45 52 58" fill="#1B7A3D" />
+          <circle cx="32" cy="24" r="11.5" fill="#D59B76" />
+          <path d="M20.5 21.5C21 14 26 11.5 32 11.5C38 11.5 43 14 43.5 21.5C41 17 36.5 15.5 32 15.5C27.5 15.5 23 17 20.5 21.5Z" fill="#F1F5F9" />
+          <circle cx="28" cy="23.5" r="1.3" fill="#0F172A" />
+          <circle cx="36" cy="23.5" r="1.3" fill="#0F172A" />
+          <path d="M28.5 29C30.2 31.2 33.8 31.2 35.5 29" stroke="#064E3B" strokeWidth="1.6" strokeLinecap="round" />
+        </svg>
+      )}
+      {showStatusBadge && (
+        <span
+          className={`absolute -bottom-0.5 -right-0.5 rounded-full border-2 border-white ${badgeDotSize} ${badgeColor}`}
+        />
+      )}
+    </span>
+  );
+});
+

@@ -53,10 +53,12 @@ import {
 import {
   BlueVialsIllustration,
   ClinicianCohortAvatars,
+  getPatientPersona,
   HormnBlueKitBoxIllustration,
   HormnLogoMark,
   LavenderTabletsIllustration,
   MintBottleIllustration,
+  PatientCohortAvatar,
   SandInjectorsIllustration,
   TelehealthDeviceIllustration,
 } from "./HormnIllustrations";
@@ -164,8 +166,11 @@ export default function LadipWorkspace() {
   const [selectedPid, setSelectedPid] = useState<string>("PT_BLEED_001");
   const [mobileMenuOpen, setMobileMenuOpen] = useState<boolean>(false);
   const [treatmentsDropdownOpen, setTreatmentsDropdownOpen] = useState<boolean>(false);
+  const [patientDropdownOpen, setPatientDropdownOpen] = useState<boolean>(false);
+  const [patientSwitchBanner, setPatientSwitchBanner] = useState<string | null>(null);
   const [notFoundReasons, setNotFoundReasons] = useState<string[]>([]);
   const treatmentsDropdownRef = useRef<HTMLDivElement | null>(null);
+  const patientDropdownRef = useRef<HTMLDivElement | null>(null);
 
   // Backend Data State
   const [backendOnline, setBackendOnline] = useState<boolean>(true);
@@ -212,9 +217,9 @@ export default function LadipWorkspace() {
   const [faersError, setFaersError] = useState<string | null>(null);
   const [faersResult, setFaersResult] = useState<SimulateResponse | null>(null);
 
-  // Close Workflows dropdown on outside click or Escape key
+  // Close Workflows & Patient dropdowns on outside click or Escape key
   useEffect(() => {
-    if (!treatmentsDropdownOpen) return;
+    if (!treatmentsDropdownOpen && !patientDropdownOpen) return;
     const handlePointerDown = (event: MouseEvent) => {
       if (
         treatmentsDropdownRef.current &&
@@ -222,10 +227,17 @@ export default function LadipWorkspace() {
       ) {
         setTreatmentsDropdownOpen(false);
       }
+      if (
+        patientDropdownRef.current &&
+        !patientDropdownRef.current.contains(event.target as Node)
+      ) {
+        setPatientDropdownOpen(false);
+      }
     };
     const handleKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") {
         setTreatmentsDropdownOpen(false);
+        setPatientDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handlePointerDown);
@@ -234,7 +246,7 @@ export default function LadipWorkspace() {
       document.removeEventListener("mousedown", handlePointerDown);
       document.removeEventListener("keydown", handleKeyDown);
     };
-  }, [treatmentsDropdownOpen]);
+  }, [treatmentsDropdownOpen, patientDropdownOpen]);
 
   // Sync URL query parameters on initial load and browser Back/Forward (popstate)
   useEffect(() => {
@@ -423,6 +435,7 @@ export default function LadipWorkspace() {
     setActiveWorkflow(slug);
     setMobileMenuOpen(false);
     setTreatmentsDropdownOpen(false);
+    setPatientDropdownOpen(false);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("workflow", slug);
@@ -446,6 +459,16 @@ export default function LadipWorkspace() {
     setRefreshBanner(null);
     setSelectedPid(pid);
     setMobileMenuOpen(false);
+    setPatientDropdownOpen(false);
+    const persona = getPatientPersona(pid);
+    setPatientSwitchBanner(
+      `Switched active cohort to ${persona.shortName} (${persona.roleTag})`
+    );
+    setTimeout(() => {
+      setPatientSwitchBanner((prev) =>
+        prev && prev.includes(persona.shortName) ? null : prev
+      );
+    }, 2800);
     if (typeof window !== "undefined") {
       const url = new URL(window.location.href);
       url.searchParams.set("patient", pid);
@@ -794,28 +817,140 @@ export default function LadipWorkspace() {
               </button>
             </nav>
 
-            {/* Right Actions: Cohort Selector + Dark Pill CTA + Mobile Hamburger */}
+            {/* Right Actions: Custom Animated Patient Account Switcher + Dark Pill CTA + Mobile Hamburger */}
             <div className="flex items-center gap-2.5">
-              <div className="hidden sm:block">
-                <label htmlFor="header-patient-select" className="sr-only">
-                  Select Patient Cohort
-                </label>
-                <select
+              <div className="hidden sm:block relative" ref={patientDropdownRef}>
+                <button
                   id="header-patient-select"
-                  value={selectedPid}
-                  onChange={(e) => navigateToPatient(e.target.value)}
-                  className="text-xs font-medium bg-[#F8FAFC] border border-slate-200 rounded-full px-3.5 py-2 text-[#111827] focus:outline-none focus:border-[#4A7BB7] max-w-[220px] truncate cursor-pointer"
+                  type="button"
+                  aria-expanded={patientDropdownOpen}
+                  aria-haspopup="listbox"
+                  onClick={() => setPatientDropdownOpen(!patientDropdownOpen)}
+                  className="group inline-flex items-center gap-2.5 bg-[#F8FAFC] hover:bg-slate-100/90 border border-slate-200/90 rounded-full pl-1.5 pr-3.5 py-1 text-left transition-all shadow-2xs focus:outline-none focus:ring-2 focus:ring-[#4A7BB7]/30"
                 >
-                  {(patients.length > 0
-                    ? patients
-                    : Object.values(FALLBACK_PROFILES)
-                  ).map((p) => (
-                    <option key={p.patient_id} value={p.patient_id}>
-                      {SCENARIO_LABELS[p.patient_id] ||
-                        `${p.name} (${p.patient_id})`}
-                    </option>
-                  ))}
-                </select>
+                  <AnimatePresence mode="wait">
+                    <motion.div
+                      key={selectedPid}
+                      initial={{ opacity: 0, scale: 0.82, rotate: -6 }}
+                      animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                      exit={{ opacity: 0, scale: 0.82, rotate: 6 }}
+                      transition={{ type: "spring", stiffness: 340, damping: 22 }}
+                      className="flex items-center gap-2"
+                    >
+                      <PatientCohortAvatar patientId={selectedPid} size="sm" />
+                      <div className="max-w-[155px] leading-tight">
+                        <div className="text-xs font-semibold text-[#111827] truncate">
+                          {
+                            getPatientPersona(selectedPid, patientProfile.name)
+                              .shortName
+                          }
+                        </div>
+                        <div className="text-[10px] font-medium text-slate-500 truncate">
+                          {
+                            getPatientPersona(selectedPid, patientProfile.name)
+                              .roleTag
+                          }
+                        </div>
+                      </div>
+                    </motion.div>
+                  </AnimatePresence>
+                  <CaretDown
+                    size={13}
+                    weight="bold"
+                    className={`text-slate-500 transition-transform duration-200 ${
+                      patientDropdownOpen ? "rotate-180 text-[#111827]" : ""
+                    }`}
+                  />
+                </button>
+
+                {/* Animated Patient Account Switcher Popover */}
+                <AnimatePresence>
+                  {patientDropdownOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.97 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 6, scale: 0.97 }}
+                      transition={{ type: "spring", stiffness: 360, damping: 26 }}
+                      role="listbox"
+                      aria-label="Select Active Patient Cohort"
+                      className="absolute right-0 mt-2.5 w-[340px] sm:w-[380px] rounded-3xl bg-white border border-slate-200/90 shadow-diffusion p-2.5 z-50"
+                    >
+                      <div className="px-3 py-2 flex items-center justify-between border-b border-slate-100 mb-1.5">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-slate-400">
+                          Switch Active Patient Cohort
+                        </span>
+                        <span className="text-[10px] font-mono font-semibold px-2 py-0.5 rounded-full bg-slate-100 text-slate-600">
+                          5 Indian Profiles
+                        </span>
+                      </div>
+
+                      <div className="space-y-1 max-h-[360px] overflow-y-auto pr-0.5">
+                        {(patients.length > 0
+                          ? patients
+                          : Object.values(FALLBACK_PROFILES)
+                        ).map((p) => {
+                          const persona = getPatientPersona(p.patient_id, p.name);
+                          const isSelected = p.patient_id === selectedPid;
+                          return (
+                            <button
+                              key={p.patient_id}
+                              type="button"
+                              role="option"
+                              aria-selected={isSelected}
+                              onClick={() => navigateToPatient(p.patient_id)}
+                              className={`w-full text-left p-2.5 rounded-2xl transition-all flex items-center gap-3 relative ${
+                                isSelected
+                                  ? "bg-[#111827] text-white shadow-sm"
+                                  : "hover:bg-[#F8FAFC] text-[#111827]"
+                              }`}
+                            >
+                              <PatientCohortAvatar
+                                patientId={p.patient_id}
+                                size="md"
+                              />
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between gap-2">
+                                  <span
+                                    className={`font-display text-xs font-semibold truncate ${
+                                      isSelected ? "text-white" : "text-[#111827]"
+                                    }`}
+                                  >
+                                    {persona.shortName}
+                                  </span>
+                                  <span
+                                    className={`text-[10px] font-semibold px-2 py-0.5 rounded-full border shrink-0 ${
+                                      isSelected
+                                        ? "bg-white/15 text-white border-white/20"
+                                        : persona.riskColor
+                                    }`}
+                                  >
+                                    {persona.riskLabel}
+                                  </span>
+                                </div>
+                                <div
+                                  className={`text-[11px] truncate mt-0.5 ${
+                                    isSelected ? "text-slate-300" : "text-slate-500"
+                                  }`}
+                                >
+                                  {persona.roleTag}
+                                </div>
+                                <div
+                                  className={`text-[10.5px] font-mono truncate mt-0.5 ${
+                                    isSelected
+                                      ? "text-sky-300"
+                                      : "text-[#3B6EA8]"
+                                  }`}
+                                >
+                                  {persona.regimenShort}
+                                </div>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
               </div>
 
               <button
@@ -838,6 +973,44 @@ export default function LadipWorkspace() {
             </div>
           </div>
         </div>
+
+        {/* Animated Patient Account Switch Notification Toast */}
+        <AnimatePresence>
+          {patientSwitchBanner && (
+            <motion.div
+              key={patientSwitchBanner}
+              initial={{ opacity: 0, y: -12, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              className="bg-[#111827] text-white border-t border-white/10 overflow-hidden"
+            >
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-2 flex items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <PatientCohortAvatar
+                    patientId={selectedPid}
+                    size="xs"
+                    showStatusBadge={false}
+                  />
+                  <span className="font-medium text-white">
+                    {patientSwitchBanner}
+                  </span>
+                  <span className="hidden md:inline-block text-slate-400">
+                    • Recomputing longitudinal FAERS exposure windows &amp; Naranjo causality
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setPatientSwitchBanner(null)}
+                  className="text-slate-400 hover:text-white p-1"
+                  aria-label="Dismiss notification"
+                >
+                  <X size={13} />
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Responsive Mobile Drawer Menu */}
         <AnimatePresence>
@@ -875,28 +1048,44 @@ export default function LadipWorkspace() {
               </div>
 
               <div>
-                <label
-                  htmlFor="mobile-patient-select"
-                  className="block text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1.5"
-                >
+                <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">
                   Switch Patient Cohort
-                </label>
-                <select
-                  id="mobile-patient-select"
-                  value={selectedPid}
-                  onChange={(e) => navigateToPatient(e.target.value)}
-                  className="w-full text-xs font-medium bg-[#F8FAFC] border border-slate-200 rounded-xl px-3.5 py-2.5 text-[#111827]"
-                >
+                </div>
+                <div className="grid grid-cols-1 gap-1.5">
                   {(patients.length > 0
                     ? patients
                     : Object.values(FALLBACK_PROFILES)
-                  ).map((p) => (
-                    <option key={p.patient_id} value={p.patient_id}>
-                      {SCENARIO_LABELS[p.patient_id] ||
-                        `${p.name} (${p.patient_id})`}
-                    </option>
-                  ))}
-                </select>
+                  ).map((p) => {
+                    const persona = getPatientPersona(p.patient_id, p.name);
+                    const isSelected = p.patient_id === selectedPid;
+                    return (
+                      <button
+                        key={p.patient_id}
+                        type="button"
+                        onClick={() => navigateToPatient(p.patient_id)}
+                        className={`w-full text-left p-2.5 rounded-2xl flex items-center gap-3 transition-all ${
+                          isSelected
+                            ? "bg-[#111827] text-white"
+                            : "bg-[#F8FAFC] text-[#111827] hover:bg-slate-100"
+                        }`}
+                      >
+                        <PatientCohortAvatar patientId={p.patient_id} size="sm" />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-semibold truncate">
+                            {persona.shortName}
+                          </div>
+                          <div
+                            className={`text-[10px] truncate ${
+                              isSelected ? "text-slate-300" : "text-slate-500"
+                            }`}
+                          >
+                            {persona.regimenShort}
+                          </div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
               </div>
             </motion.div>
           )}
@@ -904,33 +1093,308 @@ export default function LadipWorkspace() {
       </header>
 
       {/* =====================================================================
-          3. HORMN REFERENCE IMAGE 1: HERO SECTION & 4 PASTEL WORKFLOW CARDS
+          3A. FULL-VIEWPORT LANDING HERO (FILLS INITIAL SCREEN BEFORE WORKFLOWS)
          ===================================================================== */}
-      <section className="w-full bg-white pt-8 sm:pt-11 pb-8 border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          {/* Split / Left-aligned HORMN Display Headline */}
-          <div className="max-w-2xl">
-            <h1 className="font-display text-4xl sm:text-5xl lg:text-[3.4rem] font-normal tracking-[-0.03em] leading-[1.06] text-[#111827]">
-              Personalised pharmacovigilance{" "}
-              <span className="block mt-1">
-                to restore clinical{" "}
-                <span className="text-[#8C9BAE]">strength.</span>
+      <section className="w-full bg-white min-h-[calc(100svh-112px)] flex flex-col justify-between py-8 sm:py-12 lg:py-14 border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1 flex flex-col justify-between">
+          {/* Top Eyebrow Strip */}
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-[#F8FAFC] border border-slate-200/80 text-[11px] font-semibold uppercase tracking-[0.14em] text-[#3B6EA8]">
+              <Sparkle size={13} weight="fill" className="text-[#3B6EA8]" />
+              <span>Longitudinal Pharmacovigilance Engine</span>
+            </div>
+            <div className="hidden md:inline-flex items-center gap-2 text-xs text-slate-500">
+              <span>Active Cohort:</span>
+              <span className="font-semibold text-[#111827]">
+                {getPatientPersona(selectedPid, patientProfile.name).shortName}
               </span>
-            </h1>
-            <p className="mt-4 text-sm sm:text-base text-slate-600 leading-relaxed max-w-[60ch]">
-              Combining empirical FDA FAERS 2x2 disproportionality ratios with
-              longitudinal patient medication timelines to detect hidden
-              multi-drug synergy and stop clinical alert fatigue.
-            </p>
+              <span className="text-slate-300">•</span>
+              <span className="font-mono text-[11px] text-[#3B6EA8] font-semibold">
+                {activeAlerts.length} Actionable / {suppressedAlerts.length} Suppressed
+              </span>
+            </div>
           </div>
 
-          {/* Section Eyebrow: TREATMENTS / CLINICAL WORKFLOWS */}
-          <div className="mt-8 mb-3.5 flex items-center justify-between">
-            <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-slate-400">
-              CLINICAL WORKFLOWS
-            </span>
-            <span className="text-xs text-slate-500 hidden sm:inline">
-              Select a clinical module below to launch workspace
+          {/* Main Center Hero Grid: Enlarged Display Typography Left (7 cols) + Animated Active Patient Card Right (5 cols) */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-12 items-center my-auto py-8 lg:py-10">
+            <div className="lg:col-span-7">
+              <h1 className="font-display text-5xl sm:text-6xl lg:text-[4.4rem] xl:text-[5.1rem] font-normal tracking-[-0.035em] leading-[1.03] text-[#111827]">
+                Personalised{" "}
+                <span className="block">pharmacovigilance</span>
+                <span className="block mt-1">
+                  to restore clinical{" "}
+                  <span className="text-[#8C9BAE]">strength.</span>
+                </span>
+              </h1>
+
+              <p className="mt-6 text-base sm:text-lg lg:text-[1.22rem] text-slate-600 leading-[1.62] max-w-[54ch]">
+                Combining empirical FDA FAERS 2&times;2 disproportionality
+                ratios with longitudinal patient medication timelines to detect
+                hidden multi-drug synergy and stop clinical alert fatigue.
+              </p>
+
+              {/* Aligned Hero Action Buttons & Key Clinical Proof Pills */}
+              <div className="mt-8 flex flex-wrap items-center gap-3.5">
+                <a
+                  href="#clinical-workflows-section"
+                  className="bg-[#111827] hover:bg-zinc-800 active:scale-[0.98] text-white font-semibold text-xs sm:text-sm px-6 py-3.5 rounded-full transition-all inline-flex items-center gap-2 shadow-sm"
+                >
+                  <span>Explore Clinical Workflows</span>
+                  <ArrowRight size={15} weight="bold" />
+                </a>
+
+                <button
+                  type="button"
+                  onClick={() => navigateToWorkflow("safety", true)}
+                  className="bg-[#F8FAFC] hover:bg-slate-100 text-[#111827] border border-slate-200/90 font-semibold text-xs sm:text-sm px-6 py-3.5 rounded-full transition-all inline-flex items-center gap-2"
+                >
+                  <span>Run Safety Simulator</span>
+                  <ShieldCheck size={16} weight="fill" className="text-[#3B6EA8]" />
+                </button>
+              </div>
+
+              <div className="mt-7 pt-6 border-t border-slate-100 grid grid-cols-3 gap-4 max-w-lg">
+                <div>
+                  <div className="font-display text-xl sm:text-2xl font-semibold text-[#111827]">
+                    180K+
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    FDA FAERS Reports
+                  </div>
+                </div>
+                <div>
+                  <div className="font-display text-xl sm:text-2xl font-semibold text-[#1B7A3D]">
+                    -73%
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Alert Fatigue Noise
+                  </div>
+                </div>
+                <div>
+                  <div className="font-display text-xl sm:text-2xl font-semibold text-[#3B6EA8]">
+                    10-Pt
+                  </div>
+                  <div className="text-[11px] text-slate-500 mt-0.5">
+                    Naranjo Causality
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Right 5 Columns: Animated Active Patient Live Clinical Snapshot Card */}
+            <div className="lg:col-span-5">
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={selectedPid}
+                  initial={{ opacity: 0, y: 18, scale: 0.97 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -14, scale: 0.97 }}
+                  transition={{ type: "spring", stiffness: 290, damping: 24 }}
+                  className="rounded-[2rem] bg-[#F8FAFC] border border-slate-200/80 p-6 sm:p-7 shadow-diffusion relative overflow-hidden"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex items-center gap-3.5">
+                      <PatientCohortAvatar patientId={selectedPid} size="lg" />
+                      <div>
+                        <div className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#4A7BB7]">
+                          LIVE PATIENT SNAPSHOT
+                        </div>
+                        <h2 className="font-display text-xl sm:text-2xl font-semibold text-[#111827] tracking-tight mt-0.5">
+                          {
+                            getPatientPersona(selectedPid, patientProfile.name)
+                              .shortName
+                          }
+                        </h2>
+                        <div className="text-xs text-slate-500 mt-0.5">
+                          {
+                            getPatientPersona(selectedPid, patientProfile.name)
+                              .roleTag
+                          }{" "}
+                          •{" "}
+                          <span className="font-mono text-[11px] text-slate-700">
+                            {patientProfile.patient_id}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span
+                      className={`text-[10px] font-bold uppercase px-2.5 py-1 rounded-full border shrink-0 ${
+                        getPatientPersona(selectedPid, patientProfile.name)
+                          .riskColor
+                      }`}
+                    >
+                      {
+                        getPatientPersona(selectedPid, patientProfile.name)
+                          .riskLabel
+                      }
+                    </span>
+                  </div>
+
+                  {/* Active Medication Regimen Chips */}
+                  <div className="mt-5">
+                    <div className="text-[10px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-2">
+                      Concurrent Active Regimen ({activeMedications.length} Drugs)
+                    </div>
+                    <div className="flex flex-wrap gap-1.5">
+                      {activeMedications.map((m) => (
+                        <span
+                          key={m.drug_name}
+                          className="px-3 py-1 rounded-full bg-white border border-slate-200/90 text-[#111827] text-xs font-medium shadow-2xs"
+                        >
+                          {m.drug_name}{" "}
+                          <span className="text-slate-400 font-mono text-[11px]">
+                            {m.dose}
+                            {m.dose_unit}
+                          </span>
+                        </span>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* 3-Column Live Telemetry Strip */}
+                  <div className="mt-5 grid grid-cols-3 gap-2.5">
+                    <div className="rounded-2xl bg-white border border-slate-200/70 p-3 text-center">
+                      <div
+                        className={`font-display text-2xl font-bold ${
+                          critCount > 0 ? "text-[#DC2626]" : "text-[#111827]"
+                        }`}
+                      >
+                        {activeAlerts.length}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">
+                        Active Alerts
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-white border border-slate-200/70 p-3 text-center">
+                      <div className="font-display text-2xl font-bold text-[#1B7A3D]">
+                        {suppressedAlerts.length}
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">
+                        Suppressed
+                      </div>
+                    </div>
+                    <div className="rounded-2xl bg-white border border-slate-200/70 p-3 text-center">
+                      <div className="font-display text-2xl font-bold text-[#3B6EA8]">
+                        {peakPrr.toFixed(1)}x
+                      </div>
+                      <div className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 mt-0.5">
+                        Peak PRR
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="mt-5 pt-4 border-t border-slate-200/70 flex items-center justify-between gap-3">
+                    <span className="text-[11px] text-slate-500 truncate">
+                      Switch patient below or in header to compare timelines
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => navigateToWorkflow("discovery", true)}
+                      className="text-xs font-semibold text-[#111827] hover:text-[#3B6EA8] inline-flex items-center gap-1 shrink-0 transition-colors"
+                    >
+                      <span>Open Timeline</span>
+                      <ArrowRight size={13} weight="bold" />
+                    </button>
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            </div>
+          </div>
+
+          {/* Bottom Bar of Initial Viewport: Clinical Benchmark Strip + Avatar Cohort Switcher Pills */}
+          <div className="pt-5 border-t border-slate-100 flex flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-2.5 text-xs">
+              <span className="inline-flex items-center gap-1 font-display font-bold text-[#111827]">
+                <Star size={16} weight="fill" className="text-[#00B67A]" />
+                Clinical Benchmark
+              </span>
+              <span className="inline-flex items-center gap-0.5">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <span
+                    key={n}
+                    className="w-4 h-4 rounded-[3px] bg-[#00B67A] text-white inline-flex items-center justify-center"
+                  >
+                    <Star size={10} weight="fill" />
+                  </span>
+                ))}
+              </span>
+              <span className="text-slate-600 font-medium">
+                <strong className="text-[#111827]">4.9</strong> •{" "}
+                <strong className="text-[#111827]">16+</strong> verified FAERS
+                signals • <strong className="text-[#111827]">5</strong> Indian
+                patient cohorts
+              </span>
+            </div>
+
+            {/* Cohort Quick Pills with Respective Patient Avatar Icons & Spring Pill Indicator */}
+            <div className="flex flex-wrap items-center gap-1.5">
+              {(patients.length > 0
+                ? patients
+                : Object.values(FALLBACK_PROFILES)
+              ).map((p) => {
+                const shortName = p.name.split("(")[0].trim();
+                const isSelected = p.patient_id === selectedPid;
+                return (
+                  <button
+                    key={p.patient_id}
+                    type="button"
+                    onClick={() => navigateToPatient(p.patient_id)}
+                    className={`relative pl-1.5 pr-3 py-1 rounded-full text-xs font-medium transition-colors inline-flex items-center gap-1.5 ${
+                      isSelected
+                        ? "text-white"
+                        : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-200/70 border border-slate-200/80"
+                    }`}
+                  >
+                    {isSelected && (
+                      <motion.span
+                        layoutId="heroPatientCohortPill"
+                        transition={{
+                          type: "spring",
+                          stiffness: 320,
+                          damping: 26,
+                        }}
+                        className="absolute inset-0 rounded-full bg-[#111827] -z-0 shadow-xs"
+                      />
+                    )}
+                    <span className="relative z-10 inline-flex items-center gap-1.5">
+                      <PatientCohortAvatar
+                        patientId={p.patient_id}
+                        size="xs"
+                        showStatusBadge={false}
+                      />
+                      <span>{shortName}</span>
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* =====================================================================
+          3B. BELOW-THE-FOLD: 4 HORMN PASTEL CLINICAL WORKFLOW CARDS
+         ===================================================================== */}
+      <section
+        id="clinical-workflows-section"
+        className="w-full bg-white py-12 sm:py-16 border-b border-slate-100"
+      >
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="mb-6 flex flex-wrap items-end justify-between gap-4">
+            <div>
+              <span className="text-[11px] font-semibold uppercase tracking-[0.16em] text-[#4A7BB7] block mb-1.5">
+                CLINICAL WORKFLOWS
+              </span>
+              <h2 className="font-display text-2xl sm:text-3xl font-normal tracking-tight text-[#111827]">
+                Select a clinical module to launch workspace
+              </h2>
+            </div>
+            <span className="text-xs text-slate-500">
+              Synchronised with active patient:{" "}
+              <strong className="text-[#111827]">
+                {getPatientPersona(selectedPid, patientProfile.name).shortName}
+              </strong>
             </span>
           </div>
 
@@ -1076,57 +1540,6 @@ export default function LadipWorkspace() {
               </div>
             </motion.button>
           </div>
-
-          {/* Trustpilot-Style Clinical Validation Strip (Exact Reference Image 1 Bottom-Left) */}
-          <div className="mt-6 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex flex-wrap items-center gap-2.5 text-xs">
-              <span className="inline-flex items-center gap-1 font-display font-bold text-[#111827]">
-                <Star size={16} weight="fill" className="text-[#00B67A]" />
-                Clinical Benchmark
-              </span>
-              <span className="inline-flex items-center gap-0.5">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <span
-                    key={n}
-                    className="w-4 h-4 rounded-[3px] bg-[#00B67A] text-white inline-flex items-center justify-center"
-                  >
-                    <Star size={10} weight="fill" />
-                  </span>
-                ))}
-              </span>
-              <span className="text-slate-600 font-medium">
-                <strong className="text-[#111827]">4.9</strong> •{" "}
-                <strong className="text-[#111827]">16+</strong> verified FAERS
-                signals • <strong className="text-[#111827]">5</strong> Indian
-                patient cohorts
-              </span>
-            </div>
-
-            {/* Cohort Quick Pills */}
-            <div className="flex flex-wrap items-center gap-1.5">
-              {(patients.length > 0
-                ? patients
-                : Object.values(FALLBACK_PROFILES)
-              ).map((p) => {
-                const shortName = p.name.split("(")[0].trim();
-                const isSelected = p.patient_id === selectedPid;
-                return (
-                  <button
-                    key={p.patient_id}
-                    type="button"
-                    onClick={() => navigateToPatient(p.patient_id)}
-                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all ${
-                      isSelected
-                        ? "bg-[#111827] text-white shadow-sm"
-                        : "bg-[#F8FAFC] text-slate-600 hover:bg-slate-200/70 border border-slate-200/80"
-                    }`}
-                  >
-                    {shortName}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
         </div>
       </section>
 
@@ -1219,17 +1632,28 @@ export default function LadipWorkspace() {
             /* ===============================================================
                WORKFLOW 1: MULTI-DRUG INTERACTION DISCOVERY
                =============================================================== */
-            <div className="space-y-7">
+            <motion.div
+              key={`discovery-${selectedPid}`}
+              initial={{ opacity: 0, y: 12 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ type: "spring", stiffness: 280, damping: 26 }}
+              className="space-y-7"
+            >
               {/* Patient Summary Card */}
               <div className="rounded-[2rem] bg-white border border-slate-200/70 p-6 sm:p-8 shadow-diffusion">
                 <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
                   <div className="lg:col-span-5">
-                    <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4A7BB7] mb-1">
-                      ACTIVE PATIENT COHORT
+                    <div className="flex items-center gap-3.5 mb-2">
+                      <PatientCohortAvatar patientId={selectedPid} size="lg" />
+                      <div>
+                        <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-[#4A7BB7]">
+                          ACTIVE PATIENT COHORT
+                        </div>
+                        <h2 className="font-display text-2xl sm:text-3xl font-semibold text-[#111827] tracking-tight">
+                          {patientProfile.name}
+                        </h2>
+                      </div>
                     </div>
-                    <h2 className="font-display text-2xl sm:text-3xl font-semibold text-[#111827] tracking-tight">
-                      {patientProfile.name}
-                    </h2>
                     <div className="mt-1.5 text-xs text-slate-500 flex flex-wrap items-center gap-2">
                       <span>
                         MRN{" "}
@@ -1739,7 +2163,7 @@ export default function LadipWorkspace() {
                   </div>
                 )}
               </div>
-            </div>
+            </motion.div>
           ) : activeWorkflow === "safety" ? (
             /* ===============================================================
                WORKFLOW 2: PROSPECTIVE DRUG SAFETY CHECK
@@ -2620,91 +3044,394 @@ export default function LadipWorkspace() {
       </main>
 
       {/* =====================================================================
-          5. HORMN REFERENCE IMAGE 2: 2x2 ASYMMETRIC BENTO FEATURE SHOWCASE
+          5. CONNECTED 4-STAGE END-TO-END CLINICAL WORKFLOW PIPELINE ("HOW IT WORKS")
          ===================================================================== */}
       <section
         id="why-ladip-bento"
-        className="w-full bg-white py-12 sm:py-16 border-t border-slate-100"
+        className="w-full bg-white py-14 sm:py-20 border-t border-slate-100"
       >
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-            {/* Bento Card 1 (Top Left — 6 cols): "Effective prescription treatments" -> "Effective 2x2 disproportionality" */}
-            <div className="lg:col-span-6 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/60 p-7 sm:p-9 flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="max-w-sm">
-                <h3 className="font-display text-2xl sm:text-3xl font-normal tracking-tight leading-tight">
-                  <span className="block text-[#4A7BB7]">Effective</span>
-                  <span className="block text-[#111827] mt-0.5">
-                    disproportionality protocols
-                  </span>
-                </h3>
-                <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Access science-backed 2x2 contingency ratios and Evans&apos;
-                  chi-squared thresholds proven to isolate multi-drug adverse
-                  synergy based on FDA FAERS research.
-                </p>
-              </div>
-              <div className="shrink-0">
-                <BlueVialsIllustration className="w-44 h-36" />
-              </div>
-            </div>
+          {/* Section Header */}
+          <div className="max-w-3xl mb-10">
+            <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF2FA] text-[#3B6EA8] text-[11px] font-bold uppercase tracking-[0.14em] mb-3">
+              <span>Connected End-to-End Architecture • How LADIP Works</span>
+            </span>
+            <h2 className="font-display text-3xl sm:text-4xl lg:text-[2.65rem] font-normal tracking-tight leading-[1.1] text-[#111827]">
+              Four connected stages from raw patient record{" "}
+              <span className="text-[#4A7BB7]">
+                to causality-verified prescription.
+              </span>
+            </h2>
+            <p className="mt-3 text-sm sm:text-base text-slate-600 leading-relaxed">
+              Instead of disconnected static drug-pair lookups, every patient
+              cohort flows sequentially through a four-stage longitudinal
+              pharmacovigilance pipeline.
+            </p>
+          </div>
 
-            {/* Bento Card 2 (Top Right — 6 cols): "Pharmacy delivery Australia wide" -> "Longitudinal fatigue suppression" */}
-            <div className="lg:col-span-6 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/60 p-7 sm:p-9 flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="max-w-xs">
-                <h3 className="font-display text-2xl sm:text-3xl font-normal tracking-tight leading-tight">
-                  <span className="block text-[#4A7BB7]">
-                    Fatigue-free triage
+          {/* Top Connected Pipeline Overview Bar (01 -> 02 -> 03 -> 04) */}
+          <div className="hidden lg:grid grid-cols-4 gap-0 mb-8 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 p-3 items-center">
+            {[
+              {
+                num: "01",
+                label: "EHR & OCR Ingestion",
+                sub: "RxNorm Timeline Builder",
+                color: "bg-[#5E4FA2]",
+              },
+              {
+                num: "02",
+                label: "FAERS 2×2 Disproportionality",
+                sub: "PRR ≥ 2.0 & Chi-Sq ≥ 4.0",
+                color: "bg-[#3B6EA8]",
+              },
+              {
+                num: "03",
+                label: "Temporal Fatigue Filter",
+                sub: ">180d Tolerance Suppression",
+                color: "bg-[#1B7A3D]",
+              },
+              {
+                num: "04",
+                label: "Naranjo & Pre-Order Check",
+                sub: "10-Pt Causality & Simulation",
+                color: "bg-[#111827]",
+              },
+            ].map((step, i) => (
+              <div key={step.num} className="flex items-center">
+                <div className="flex items-center gap-2.5 px-3 py-1.5">
+                  <span
+                    className={`w-7 h-7 rounded-full text-white font-mono text-xs font-bold inline-flex items-center justify-center shrink-0 ${step.color}`}
+                  >
+                    {step.num}
                   </span>
-                  <span className="block text-[#111827] mt-0.5">
-                    hospital wide
-                  </span>
-                </h3>
-                <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  If a patient tolerates a chronic regimen stably for over 180
-                  days without matching symptoms, low-value background alerts
-                  are suppressed automatically.
-                </p>
+                  <div className="leading-tight">
+                    <div className="text-xs font-semibold text-[#111827]">
+                      {step.label}
+                    </div>
+                    <div className="text-[10.5px] text-slate-500">
+                      {step.sub}
+                    </div>
+                  </div>
+                </div>
+                {i < 3 && (
+                  <div className="flex-1 flex items-center px-2">
+                    <div className="h-[2px] w-full bg-slate-200 relative overflow-hidden rounded-full">
+                      <motion.span
+                        animate={{ x: ["-100%", "200%"] }}
+                        transition={{
+                          duration: 2.2,
+                          repeat: Infinity,
+                          ease: "linear",
+                          delay: i * 0.4,
+                        }}
+                        className="absolute inset-y-0 w-1/2 bg-gradient-to-r from-transparent via-[#4A7BB7] to-transparent"
+                      />
+                    </div>
+                    <ArrowRight
+                      size={13}
+                      weight="bold"
+                      className="text-[#4A7BB7] shrink-0 -ml-1"
+                    />
+                  </div>
+                )}
               </div>
-              <div className="shrink-0">
-                <HormnBlueKitBoxIllustration className="w-40 h-32" />
-              </div>
-            </div>
+            ))}
+          </div>
 
-            {/* Bento Card 3 (Bottom Left — 5 cols): "Expert care" with 3 doctor avatars */}
-            <div className="lg:col-span-5 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/60 p-7 sm:p-9 flex flex-col justify-between gap-6">
-              <ClinicianCohortAvatars />
+          {/* ROW 1: STAGE 01 ━━━(Connected Bridge)━━━▶ STAGE 02 */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            {/* STAGE 01 (5 cols) */}
+            <div className="lg:col-span-5 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/80 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-2xs">
               <div>
-                <h3 className="font-display text-2xl sm:text-3xl font-normal tracking-tight leading-tight">
-                  <span className="block text-[#4A7BB7]">Expert causality</span>
-                  <span className="block text-[#111827] mt-0.5">
-                    Naranjo audit trail
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#F0EDF8] text-[#5E4FA2] font-mono text-[11px] font-bold">
+                    <span>STAGE 01</span>
+                    <span>•</span>
+                    <span>INPUT &amp; OCR</span>
                   </span>
-                </h3>
-                <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  Built for clinical pharmacologists and attending physicians,
-                  automating 10-point Naranjo ADR probability scoring for every
-                  acute trigger drug.
-                </p>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Step 1 of 4
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="max-w-xs">
+                    <h3 className="font-display text-2xl sm:text-[1.65rem] font-normal tracking-tight leading-tight text-[#111827]">
+                      <span className="block text-[#5E4FA2]">
+                        Longitudinal EHR
+                      </span>
+                      <span className="block mt-0.5">
+                        &amp; OCR timeline builder
+                      </span>
+                    </h3>
+                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Parses structured EHR profiles or raw PDF/image discharge
+                      summaries, normalizes drug names via NIH RxNorm, and maps
+                      exact daily exposure start and end windows.
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-center">
+                    <LavenderTabletsIllustration className="w-32 h-28" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200/70 flex items-center justify-between gap-2 text-xs">
+                <span className="font-mono text-[11px] text-[#5E4FA2] font-semibold">
+                  Handoff &rarr; Normalized Drug Windows
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigateToWorkflow("ehr", true)}
+                  className="font-semibold text-[#111827] hover:text-[#5E4FA2] inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Open EHR Parser</span>
+                  <ArrowRight size={12} weight="bold" />
+                </button>
               </div>
             </div>
 
-            {/* Bento Card 4 (Bottom Right — 7 cols): "100% telehealth based" -> "100% segregated architecture" */}
-            <div className="lg:col-span-7 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/60 p-7 sm:p-9 flex flex-col sm:flex-row items-center justify-between gap-6">
-              <div className="max-w-sm">
-                <h3 className="font-display text-2xl sm:text-3xl font-normal tracking-tight leading-tight">
-                  <span className="block text-[#4A7BB7]">100%</span>
-                  <span className="block text-[#111827] mt-0.5">
-                    segregated web &amp; mobile stack
+            {/* CONNECTOR BRIDGE: STAGE 01 ➔ STAGE 02 (2 cols on Desktop, Vertical on Mobile) */}
+            <div className="lg:col-span-2 flex flex-col items-center justify-center py-2 lg:py-0">
+              <div className="w-full flex lg:flex-col items-center justify-center gap-2 px-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#3B6EA8] bg-[#EAF2FA] px-2.5 py-1 rounded-full border border-blue-200/80 text-center">
+                  Overlap Detection
+                </span>
+                <div className="hidden lg:flex items-center w-full">
+                  <div className="h-[2px] flex-1 bg-[#9BC2EE] relative overflow-hidden">
+                    <motion.span
+                      animate={{ x: ["-100%", "200%"] }}
+                      transition={{
+                        duration: 1.8,
+                        repeat: Infinity,
+                        ease: "linear",
+                      }}
+                      className="absolute inset-y-0 w-1/2 bg-[#3B6EA8]"
+                    />
+                  </div>
+                  <span className="w-7 h-7 rounded-full bg-[#3B6EA8] text-white inline-flex items-center justify-center shadow-xs shrink-0">
+                    <ArrowRight size={14} weight="bold" />
                   </span>
-                </h3>
-                <p className="mt-3 text-xs sm:text-sm text-slate-600 leading-relaxed">
-                  No more monolithic reruns — decoupled Next.js Web UI, Expo
-                  React Native Mobile Portal, and FastAPI pharmacovigilance
-                  service.
-                </p>
+                </div>
+                <div className="lg:hidden flex flex-col items-center">
+                  <div className="w-[2px] h-5 bg-[#3B6EA8]" />
+                  <span className="w-6 h-6 rounded-full bg-[#3B6EA8] text-white inline-flex items-center justify-center text-xs">
+                    &darr;
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 text-center hidden lg:block">
+                  Concurrent drug pairs &amp; triplets
+                </span>
               </div>
-              <div className="shrink-0">
-                <TelehealthDeviceIllustration className="w-44 h-36" />
+            </div>
+
+            {/* STAGE 02 (5 cols) */}
+            <div className="lg:col-span-5 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/80 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF2FA] text-[#3B6EA8] font-mono text-[11px] font-bold">
+                    <span>STAGE 02</span>
+                    <span>•</span>
+                    <span>FAERS ENGINE</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Step 2 of 4
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="max-w-xs">
+                    <h3 className="font-display text-2xl sm:text-[1.65rem] font-normal tracking-tight leading-tight text-[#111827]">
+                      <span className="block text-[#4A7BB7]">
+                        Empirical 2&times;2
+                      </span>
+                      <span className="block mt-0.5">
+                        disproportionality mining
+                      </span>
+                    </h3>
+                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Queries overlapping medications against 180K+ FDA FAERS
+                      reports using 2&times;2 contingency ratios (PRR &ge; 2.0,
+                      Evans&apos; &chi;&sup2; &ge; 4.0) to isolate multi-drug
+                      adverse synergy.
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-center">
+                    <BlueVialsIllustration className="w-36 h-28" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200/70 flex items-center justify-between gap-2 text-xs">
+                <span className="font-mono text-[11px] text-[#3B6EA8] font-semibold">
+                  Handoff &rarr; Candidate Synergy Signals
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigateToWorkflow("faers", true)}
+                  className="font-semibold text-[#111827] hover:text-[#3B6EA8] inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Explore FAERS</span>
+                  <ArrowRight size={12} weight="bold" />
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* MID-PIPELINE VISUAL CONDUIT CONNECTING STAGE 02 DOWN TO STAGE 03 */}
+          <div className="my-4 relative flex items-center justify-center">
+            <div className="w-full max-w-4xl rounded-2xl bg-gradient-to-r from-[#EAF2FA]/70 via-[#EAF5F0]/80 to-[#EAF2FA]/70 border border-slate-200/80 px-4 py-2.5 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#111827]">
+                <span className="w-6 h-6 rounded-full bg-[#1B7A3D] text-white font-mono text-[11px] inline-flex items-center justify-center">
+                  &darr;
+                </span>
+                <span>
+                  Pipeline Transition: Candidate FAERS Signals enter Longitudinal
+                  Exposure Gate
+                </span>
+              </div>
+              <span className="font-mono text-[11px] font-semibold text-[#1B7A3D] bg-white px-3 py-1 rounded-full border border-emerald-200/80">
+                Rule: Suppress if tolerated &gt;180 days without matching symptom
+              </span>
+            </div>
+          </div>
+
+          {/* ROW 2: STAGE 03 ━━━(Connected Bridge)━━━▶ STAGE 04 */}
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+            {/* STAGE 03 (5 cols) */}
+            <div className="lg:col-span-5 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/80 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#EAF5F0] text-[#1B7A3D] font-mono text-[11px] font-bold">
+                    <span>STAGE 03</span>
+                    <span>•</span>
+                    <span>NOISE SUPPRESSION</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Step 3 of 4
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="max-w-xs">
+                    <h3 className="font-display text-2xl sm:text-[1.65rem] font-normal tracking-tight leading-tight text-[#111827]">
+                      <span className="block text-[#1B7A3D]">
+                        Fatigue-free triage
+                      </span>
+                      <span className="block mt-0.5">
+                        via chronic tolerance gate
+                      </span>
+                    </h3>
+                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      If a patient tolerates a chronic regimen stably for over
+                      180 days without matching symptoms, background alerts are
+                      automatically suppressed (-73% alert noise).
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-center">
+                    <HormnBlueKitBoxIllustration className="w-36 h-28" />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200/70 flex items-center justify-between gap-2 text-xs">
+                <span className="font-mono text-[11px] text-[#1B7A3D] font-semibold">
+                  Handoff &rarr; Actionable Acute Triggers
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigateToWorkflow("discovery", true)}
+                  className="font-semibold text-[#111827] hover:text-[#1B7A3D] inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>View Triage</span>
+                  <ArrowRight size={12} weight="bold" />
+                </button>
+              </div>
+            </div>
+
+            {/* CONNECTOR BRIDGE: STAGE 03 ➔ STAGE 04 (2 cols on Desktop, Vertical on Mobile) */}
+            <div className="lg:col-span-2 flex flex-col items-center justify-center py-2 lg:py-0">
+              <div className="w-full flex lg:flex-col items-center justify-center gap-2 px-2">
+                <span className="text-[10px] font-mono font-bold uppercase tracking-wider text-[#1B7A3D] bg-[#EAF5F0] px-2.5 py-1 rounded-full border border-emerald-200/80 text-center">
+                  Causality Scoring
+                </span>
+                <div className="hidden lg:flex items-center w-full">
+                  <div className="h-[2px] flex-1 bg-emerald-300 relative overflow-hidden">
+                    <motion.span
+                      animate={{ x: ["-100%", "200%"] }}
+                      transition={{
+                        duration: 1.8,
+                        repeat: Infinity,
+                        ease: "linear",
+                        delay: 0.5,
+                      }}
+                      className="absolute inset-y-0 w-1/2 bg-[#1B7A3D]"
+                    />
+                  </div>
+                  <span className="w-7 h-7 rounded-full bg-[#111827] text-white inline-flex items-center justify-center shadow-xs shrink-0">
+                    <ArrowRight size={14} weight="bold" />
+                  </span>
+                </div>
+                <div className="lg:hidden flex flex-col items-center">
+                  <div className="w-[2px] h-5 bg-[#1B7A3D]" />
+                  <span className="w-6 h-6 rounded-full bg-[#111827] text-white inline-flex items-center justify-center text-xs">
+                    &darr;
+                  </span>
+                </div>
+                <span className="text-[10px] text-slate-400 text-center hidden lg:block">
+                  Acute onset &amp; dechallenge audit
+                </span>
+              </div>
+            </div>
+
+            {/* STAGE 04 (5 cols) */}
+            <div className="lg:col-span-5 rounded-[2rem] bg-[#F8FAFC] border border-slate-200/80 p-6 sm:p-8 flex flex-col justify-between relative overflow-hidden shadow-2xs">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <span className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-slate-200/80 text-[#111827] font-mono text-[11px] font-bold">
+                    <span>STAGE 04</span>
+                    <span>•</span>
+                    <span>CAUSALITY &amp; DECISION</span>
+                  </span>
+                  <span className="text-[11px] font-mono text-slate-400">
+                    Step 4 of 4
+                  </span>
+                </div>
+
+                <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                  <div className="max-w-xs">
+                    <h3 className="font-display text-2xl sm:text-[1.65rem] font-normal tracking-tight leading-tight text-[#111827]">
+                      <span className="block text-[#4A7BB7]">
+                        Naranjo causality
+                      </span>
+                      <span className="block mt-0.5">
+                        &amp; pre-order safety check
+                      </span>
+                    </h3>
+                    <p className="mt-2.5 text-xs sm:text-sm text-slate-600 leading-relaxed">
+                      Automates 10-point Naranjo ADR probability scoring for
+                      acute trigger drugs and simulates safer alternative
+                      candidates before a new prescription is ordered.
+                    </p>
+                  </div>
+                  <div className="shrink-0 self-center">
+                    <ClinicianCohortAvatars />
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-6 pt-4 border-t border-slate-200/70 flex items-center justify-between gap-2 text-xs">
+                <span className="font-mono text-[11px] text-[#111827] font-semibold">
+                  Output &rarr; Causality-Verified Regimen
+                </span>
+                <button
+                  type="button"
+                  onClick={() => navigateToWorkflow("safety", true)}
+                  className="font-semibold text-[#111827] hover:text-[#4A7BB7] inline-flex items-center gap-1 transition-colors"
+                >
+                  <span>Run Simulator</span>
+                  <ArrowRight size={12} weight="bold" />
+                </button>
               </div>
             </div>
           </div>
