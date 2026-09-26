@@ -317,3 +317,209 @@ def test_bklit_ui_svg_transform_and_touch_tooltip():
     assert '"touchstart"' in _BKLIT_JS
     assert 'addEventListener("click"' in _BKLIT_JS
 
+
+def test_segregated_backend_naranjo_and_extract_timeline():
+    from pathlib import Path
+    from backend.main import app as segregated_app
+
+    seg_client = TestClient(segregated_app)
+    res_health = seg_client.get("/api/v1/health")
+    assert res_health.status_code == 200
+
+    # Verify Naranjo causality breakdown is returned in /alerts for Ramesh Sharma
+    res_alerts = seg_client.get("/api/v1/patients/PT_BLEED_001/alerts")
+    assert res_alerts.status_code == 200
+    top = res_alerts.json()["alerts"][0]
+    assert top["naranjo"] is not None
+    assert top["naranjo"]["total_score"] >= 5
+    assert len(top["naranjo"]["questions"]) == 10
+
+    # Verify suppressed_alerts array is returned for Rajesh Varma (PT_STABLE_004)
+    res_stable = seg_client.get("/api/v1/patients/PT_STABLE_004/alerts")
+    assert res_stable.status_code == 200
+    assert res_stable.json()["active_alerts_count"] == 0
+    assert len(res_stable.json()["suppressed_alerts"]) >= 1
+
+    # Verify /api/v1/patients/extract-timeline edge cases & happy path
+    res_empty = seg_client.post("/api/v1/patients/extract-timeline")
+    assert res_empty.status_code == 400
+
+    res_no_meds = seg_client.post(
+        "/api/v1/patients/extract-timeline",
+        data={"raw_text": "Patient came in for routine checkup. No medications or symptoms."},
+    )
+    assert res_no_meds.status_code == 400
+
+    sample_note = (
+        "Patient Name: Vikram Deshmukh\n"
+        "Patient ID: PT_CLINICAL_006\n"
+        "68yo male with Atrial Fibrillation.\n"
+        "Medications:\n"
+        "- Warfarin 5 mg QD started 2026-01-15\n"
+        "- Ibuprofen 400 mg TID started 2026-09-18\n"
+        "Symptoms:\n"
+        "Admitted 2026-09-21 for acute gastrointestinal hemorrhage."
+    )
+    pt6_path = Path(__file__).resolve().parent.parent / "data" / "patients" / "PT_CLINICAL_006.json"
+    try:
+        res_extract = seg_client.post(
+            "/api/v1/patients/extract-timeline",
+            data={"raw_text": sample_note},
+        )
+        assert res_extract.status_code == 200
+        body = res_extract.json()
+        assert body["patient_id"] == "PT_CLINICAL_006"
+        assert len(body["extracted_medications"]) >= 2
+    finally:
+        if pt6_path.exists():
+            pt6_path.unlink()
+
+
+def test_nextjs_web_ui_hormn_theme_and_taste_skill_compliance():
+    import json
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    web_dir = root / "web"
+    assert (web_dir / "package.json").exists()
+    pkg = json.loads((web_dir / "package.json").read_text(encoding="utf-8"))
+    assert "next" in pkg["dependencies"]
+    assert "framer-motion" in pkg["dependencies"]
+    assert "@phosphor-icons/react" in pkg["dependencies"]
+
+    # Verify HORMN reference theme colors, Outfit/Jakarta/JetBrains Mono fonts, and all 4 workflows
+    workspace_tsx = (web_dir / "src" / "components" / "LadipWorkspace.tsx").read_text(encoding="utf-8")
+    globals_css = (web_dir / "src" / "app" / "globals.css").read_text(encoding="utf-8")
+    assert "Outfit" in globals_css
+    assert "Plus Jakarta Sans" in globals_css
+    assert "JetBrains Mono" in globals_css
+    for pastel_hex in ["#EAF2FA", "#F5F2EB", "#F0EDF8", "#EAF5F0", "#4A7BB7", "#87909A"]:
+        assert pastel_hex in workspace_tsx, f"Missing HORMN reference color {pastel_hex}"
+
+    for wf_title in [
+        "Multi-Drug Interaction Discovery",
+        "Prospective Drug Safety Check",
+        "Patient Profile & Report Parser",
+        "FAERS Disproportionality Explorer",
+    ]:
+        assert wf_title in workspace_tsx
+
+    # Verify custom 404 page exists in Next.js App Router
+    not_found_tsx = (web_dir / "src" / "app" / "not-found.tsx").read_text(encoding="utf-8")
+    assert "404" in not_found_tsx
+
+
+def test_report_parser_no_false_positive_vitals_and_long_drug_names():
+    from src.patient.report_parser import MedicalReportParser
+
+    parser = MedicalReportParser()
+    note = (
+        "Patient Name:Kavitha Reddy\n"
+        "Patient ID: PT_MTX_TEST\n"
+        "Age 68yo female with Rheumatoid Arthritis\n"
+        "Labs: WBC 1.2, Platelets 45, eGFR 38\n"
+        "Medications:\n"
+        "- Methotrexate 15 mg weekly started 2026-02-10\n"
+        "- Trimethoprim-Sulfamethoxazole 800 mg BID started 2026-09-12\n"
+        "Symptoms:\n"
+        "Admitted 2026-02-30 with acute chest tightness, epistaxis, and pancytopenia."
+    )
+    prof = parser._extract_with_regex(note, "PT_MTX_TEST")
+    drug_names = [m.drug_name for m in prof.medications]
+
+    # Must NOT extract vitals/labs ("Age", "WBC", "Platelets", "eGFR") as medications
+    for banned in ["Age", "WBC", "Platelets", "eGFR"]:
+        assert banned not in drug_names, f"False positive medication extracted: {banned}"
+
+    # Must preserve full hyphenated name "Trimethoprim-Sulfamethoxazole" without truncation
+    assert any("Trimethoprim-Sulfamethoxazole" in d for d in drug_names)
+
+    # Must preserve WEEKLY frequency on Methotrexate
+    mtx = next(m for m in prof.medications if "Methotrexate" in m.drug_name)
+    assert mtx.frequency == "WEEKLY"
+
+    # Must not crash on invalid calendar date 2026-02-30 and must extract Chest Tightness & Epistaxis
+    sym_names = [s.description.lower() for s in prof.symptoms]
+    assert "chest tightness" in sym_names
+    assert "epistaxis" in sym_names
+    assert "pancytopenia" in sym_names
+
+
+def test_extract_timeline_png_upload_and_combined_file_and_raw_text():
+    import io
+    from pathlib import Path
+    from PIL import Image
+
+    data_dir = Path(__file__).resolve().parent.parent / "data" / "patients"
+    before_files = set(data_dir.glob("*.json"))
+
+    # Create a valid PNG prescription image in memory
+    img = Image.new("RGB", (640, 400), color=(255, 255, 255))
+    buf = io.BytesIO()
+    img.save(buf, format="PNG")
+    png_bytes = buf.getvalue()
+
+    try:
+        # 1. Uploading a valid PNG image alone must succeed (200 OK) even without tesseract binary
+        res_png = client.post(
+            "/api/v1/patients/extract-timeline",
+            files={"file": ("rx_scan.png", png_bytes, "image/png")},
+        )
+        assert res_png.status_code == 200
+        png_data = res_png.json()
+        assert len(png_data["extracted_medications"]) >= 1
+
+        # 2. Uploading both file AND raw_text must merge both sources rather than discarding raw_text
+        extra_note = (
+            "Patient ID: PT_MERGED_007\n"
+            "Patient Name: Ananya Rao\n"
+            "Medications:\n"
+            "- Clopidogrel 75 mg QD started 2026-04-10\n"
+            "- Omeprazole 40 mg QD started 2026-08-01\n"
+            "Symptoms:\n"
+            "Presented 2026-09-20 with acute chest tightness."
+        )
+        res_both = client.post(
+            "/api/v1/patients/extract-timeline",
+            files={"file": ("rx_scan.png", png_bytes, "image/png")},
+            data={"raw_text": extra_note},
+        )
+        assert res_both.status_code == 200
+        both_data = res_both.json()
+        assert both_data["patient_id"] == "PT_MERGED_007"
+        med_names = [m.lower() for m in both_data["extracted_medications"]]
+        assert any("clopidogrel" in m for m in med_names)
+        assert any("omeprazole" in m for m in med_names)
+        assert any("warfarin" in m for m in med_names)
+    finally:
+        after_files = set(data_dir.glob("*.json"))
+        for new_file in after_files - before_files:
+            if new_file.exists():
+                new_file.unlink()
+
+
+def test_nextjs_client_fallback_extraction_and_memoized_svgs():
+    from pathlib import Path
+
+    root = Path(__file__).resolve().parent.parent
+    api_ts = (root / "web" / "src" / "lib" / "api.ts").read_text(encoding="utf-8")
+    illustrations_tsx = (root / "web" / "src" / "components" / "HormnIllustrations.tsx").read_text(encoding="utf-8")
+    charts_tsx = (root / "web" / "src" / "components" / "BklitCharts.tsx").read_text(encoding="utf-8")
+    workspace_tsx = (root / "web" / "src" / "components" / "LadipWorkspace.tsx").read_text(encoding="utf-8")
+
+    # Verify offline client-side extraction fallback and cohort registration
+    assert "registerExtractedCohort" in api_ts
+    assert "extractedProfile" in api_ts
+
+    # Verify React.memo isolation on perpetual micro-interaction components (design-taste-frontend Rule 9B)
+    assert "memo(" in illustrations_tsx
+
+    # Verify dynamic timeline horizon, polypharmacy scroll container, and volcano threshold lines
+    assert "max-h-[380px] overflow-y-auto" in charts_tsx
+    assert "threshX" in charts_tsx and "threshY" in charts_tsx
+
+    # Verify popstate listener and outside-click dismissal in LadipWorkspace
+    assert '"popstate"' in workspace_tsx
+    assert "treatmentsDropdownRef" in workspace_tsx
+
+

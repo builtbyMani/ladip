@@ -13,14 +13,16 @@ __pycache__/
 *$py.class
 *.so
 .Python
-build/
+/build/
 develop-eggs/
-dist/
+/dist/
 downloads/
 eggs/
 .eggs/
-lib/
-lib64/
+/lib/
+/lib64/
+!web/src/lib/
+!web/src/lib/**
 parts/
 sdist/
 var/
@@ -47,9 +49,17 @@ coverage.xml
 *.py,cover
 .hypothesis/
 
-# Node & React Native (mobile)
+# Node, Next.js (web) & React Native (mobile)
 node_modules/
 mobile/node_modules/
+web/node_modules/
+.next/
+web/.next/
+out/
+web/out/
+*.tsbuildinfo
+next-env.d.ts
+web/next-env.d.ts
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*

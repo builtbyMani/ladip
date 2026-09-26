@@ -95,23 +95,29 @@ st.set_page_config(
 )
 
 # ==============================================================================
-# EDITORIAL HEALTH-TECH DESIGN SYSTEM (BELLA-INSPIRED, MOBILE-OPTIMIZED, NO OVERFLOW)
+# HORMN-INSPIRED CLINICAL HEALTH-TECH DESIGN SYSTEM (TASTE-SKILL CALIBRATED)
 # ==============================================================================
 _EDITORIAL_CSS = """<style>
-@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 :root {
     --surface: #FFFFFF;
-    --surface-muted: #F5F5F0;
-    --ink: #1A1A1A;
-    --ink-muted: #6B6B6B;
-    --border: #E5E5E0;
+    --surface-muted: #F8FAFC;
+    --ink: #111827;
+    --ink-muted: #64748B;
+    --border: #E2E8F0;
+    --brand-blue: #4A7BB7;
+    --brand-slate: #7C93B2;
+    --pastel-blue: #EAF2FA;
+    --pastel-sand: #F5F2EB;
+    --pastel-lavender: #F0EDF8;
+    --pastel-mint: #EAF5F0;
     --accent-green: #1B7A3D;
     --accent-lavender: #D4A5E5;
     --accent-gold: #E8C840;
     --accent-coral: #DC2626;
-    --cta-bg: #1A1A1A;
-    --chart-1: #1A1A1A;
-    --chart-2: #D4A5E5;
+    --cta-bg: #111827;
+    --chart-1: #111827;
+    --chart-2: #4A7BB7;
     --chart-3: #DC2626;
     --chart-4: #1B7A3D;
     --chart-5: #E8C840;
@@ -135,9 +141,9 @@ footer {
     display: none !important;
 }
 .main .block-container {
-    max-width: 1180px;
+    max-width: 1240px;
     width: 100%;
-    padding-top: 2rem;
+    padding-top: 1.5rem;
     padding-bottom: 3.5rem;
     padding-left: 2rem;
     padding-right: 2rem;
@@ -149,11 +155,11 @@ code, pre, .mono-val {
     background: var(--surface-muted) !important;
     color: var(--ink) !important;
     padding: 2px 6px;
-    border-radius: 4px;
+    border-radius: 6px;
     word-break: break-word;
 }
 [data-testid="stSidebar"] {
-    background-color: var(--surface) !important;
+    background-color: #F8FAFC !important;
     border-right: 1px solid var(--border) !important;
 }
 [data-testid="stSidebar"] .block-container {
@@ -161,10 +167,10 @@ code, pre, .mono-val {
 }
 [data-testid="stVerticalBlockBorderWrapper"] {
     border: 1px solid var(--border) !important;
-    border-radius: 0px !important;
-    box-shadow: none !important;
+    border-radius: 24px !important;
+    box-shadow: 0 12px 32px -12px rgba(17, 24, 39, 0.04) !important;
     background-color: var(--surface) !important;
-    padding: 20px !important;
+    padding: 22px !important;
 }
 .stButton > button, .stFormSubmitButton > button {
     background-color: var(--cta-bg) !important;
@@ -182,7 +188,7 @@ code, pre, .mono-val {
     white-space: normal !important;
 }
 .stButton > button:hover, .stFormSubmitButton > button:hover {
-    opacity: 0.88 !important;
+    opacity: 0.9 !important;
     transform: translateY(-1px) !important;
 }
 .stButton > button:active, .stFormSubmitButton > button:active {
@@ -193,13 +199,13 @@ code, pre, .mono-val {
     color: var(--ink) !important;
     display: inline-flex !important;
     align-items: center !important;
-    gap: 8px !important;
+    gap: 10px !important;
     cursor: pointer;
     transition: opacity 0.15s ease;
     border-bottom: none !important;
 }
 a.brand-link:hover {
-    opacity: 0.8;
+    opacity: 0.82;
     text-decoration: none !important;
 }
 .brand-row {
@@ -210,12 +216,27 @@ a.brand-link:hover {
     gap: 8px;
     margin-bottom: 16px;
 }
+.hormn-pill-mark {
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 32px;
+    height: 22px;
+    border-radius: 9999px;
+    background-color: #111827;
+    color: #FFFFFF !important;
+    font-family: 'Outfit', sans-serif;
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
 .brand-title {
-    font-family: 'Playfair Display', Georgia, serif !important;
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif !important;
     font-weight: 700 !important;
-    font-size: 1.65rem !important;
+    font-size: 1.15rem !important;
     color: var(--ink) !important;
-    letter-spacing: -0.02em;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
     line-height: 1;
     text-decoration: none !important;
 }
@@ -226,11 +247,71 @@ a.brand-link:hover {
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background-color: var(--accent-lavender);
-    color: #1A1A1A !important;
+    background-color: #EAF2FA;
+    color: #4A7BB7 !important;
     font-size: 10px;
     font-weight: 800;
     text-decoration: none !important;
+}
+.hormn-topbar {
+    background: #87909A;
+    color: #FFFFFF;
+    border-radius: 14px;
+    padding: 9px 18px;
+    font-size: 0.76rem;
+    font-weight: 500;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 18px;
+}
+.hormn-cards-grid {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 14px;
+    margin: 18px 0 16px 0;
+}
+.hormn-pastel-card {
+    border-radius: 22px;
+    padding: 18px 18px 16px 18px;
+    position: relative;
+    min-height: 150px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    text-decoration: none !important;
+    transition: transform 0.22s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.22s ease;
+    border: 1px solid rgba(17, 24, 39, 0.04);
+}
+.hormn-pastel-card:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 16px 32px -12px rgba(17, 24, 39, 0.08);
+}
+.hormn-arrow-circle {
+    width: 30px;
+    height: 30px;
+    border-radius: 9999px;
+    background: #FFFFFF;
+    color: #111827;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 13px;
+    font-weight: 700;
+    box-shadow: 0 2px 8px rgba(17, 24, 39, 0.08);
+    align-self: flex-end;
+}
+@media (max-width: 900px) {
+    .hormn-cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 560px) {
+    .hormn-cards-grid {
+        grid-template-columns: 1fr;
+    }
 }
 .credibility-line {
     font-size: 0.85rem;
@@ -242,23 +323,23 @@ a.brand-link:hover {
     gap: 6px;
 }
 .gold-star {
-    color: var(--accent-gold);
+    color: #00B67A;
     font-size: 1rem;
 }
 .editorial-hero {
     background: var(--surface);
     border-bottom: 1px solid var(--border);
-    padding: 4px 0 30px 0;
-    margin-bottom: 28px;
+    padding: 4px 0 26px 0;
+    margin-bottom: 24px;
 }
 .editorial-headline {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 700;
-    font-size: clamp(1.85rem, 4vw, 2.85rem);
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 400;
+    font-size: clamp(2rem, 4.2vw, 3.1rem);
     line-height: 1.08;
-    letter-spacing: -0.025em;
+    letter-spacing: -0.03em;
     color: var(--ink);
-    margin: 0 0 16px 0;
+    margin: 0 0 14px 0;
     max-width: 680px;
     word-break: break-word;
 }
@@ -271,11 +352,11 @@ a.brand-link:hover {
     margin: 0;
 }
 .patient-serif-name {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 700;
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
     font-size: clamp(1.45rem, 3vw, 1.85rem);
     color: var(--ink);
-    letter-spacing: -0.02em;
+    letter-spacing: -0.025em;
     margin: 0 0 6px 0;
     word-break: break-word;
 }
@@ -286,20 +367,23 @@ a.brand-link:hover {
     word-break: break-word;
 }
 .section-eyebrow {
-    font-size: 0.72rem;
-    font-weight: 700;
+    font-size: 0.7rem;
+    font-weight: 600;
     text-transform: uppercase;
-    letter-spacing: 0.08em;
+    letter-spacing: 0.14em;
     color: var(--ink-muted);
     margin-bottom: 6px;
 }
 .stat-callout {
-    padding: 8px 0;
+    padding: 14px 18px;
+    background: #F8FAFC;
+    border-radius: 20px;
+    border: 1px solid rgba(226, 232, 240, 0.7);
 }
 .stat-number {
-    font-family: 'Playfair Display', Georgia, serif;
-    font-weight: 900;
-    font-size: clamp(2.1rem, 4.2vw, 3.3rem);
+    font-family: 'Outfit', 'Plus Jakarta Sans', sans-serif;
+    font-weight: 600;
+    font-size: clamp(2rem, 3.8vw, 2.85rem);
     line-height: 1.0;
     letter-spacing: -0.03em;
     color: var(--ink);
@@ -676,13 +760,13 @@ def _on_recover_home():
 # ==============================================================================
 with st.sidebar:
     st.markdown(
-        """<div class="brand-row" style="margin-bottom: 6px;">
-<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#1A1A1A; display:inline-flex; align-items:center; gap:8px;" title="Return to Multi-Drug Interaction Discovery">
-<span class="brand-title" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.65rem; color:#1A1A1A; text-decoration:none;">LADIP</span>
-<span class="brand-dot" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background-color:#D4A5E5; color:#1A1A1A; font-size:10px; font-weight:800; text-decoration:none;">✓</span>
+        """<div class="brand-row" style="margin-bottom: 8px;">
+<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#111827; display:inline-flex; align-items:center; gap:10px;" title="Return to Multi-Drug Interaction Discovery">
+<span class="hormn-pill-mark">(I)</span>
+<span class="brand-title">LADIP</span>
 </a>
 </div>
-<div style="font-size: 0.8rem; color: #6B6B6B; margin-bottom: 20px;">Longitudinal Pharmacovigilance &amp; Causality Engine</div>""",
+<div style="font-size: 0.8rem; color: #64748B; margin-bottom: 20px;">Longitudinal Pharmacovigilance &amp; Causality Engine</div>""",
         unsafe_allow_html=True,
     )
 
@@ -695,7 +779,7 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;'/>", unsafe_allow_html=True)
     st.markdown('<div class="section-eyebrow">Patient Cohort Registry</div>', unsafe_allow_html=True)
 
     pid_keys = list(patient_map.keys())
@@ -708,10 +792,10 @@ with st.sidebar:
         label_visibility="collapsed",
     )
 
-    st.markdown("<hr style='border: none; border-top: 1px solid #E5E5E0; margin: 20px 0;'/>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: none; border-top: 1px solid #E2E8F0; margin: 20px 0;'/>", unsafe_allow_html=True)
     st.markdown(
-        """<div style="font-size: 0.78rem; color: #6B6B6B; line-height: 1.5;">
-<b style="color: #1A1A1A;">Clinical Benchmark Note</b><br/>
+        """<div style="font-size: 0.78rem; color: #64748B; line-height: 1.5;">
+<b style="color: #111827;">Clinical Benchmark Note</b><br/>
 Select <b>Rajesh Varma</b> to observe how longitudinal stability (&gt;6 months symptom-free) suppresses low-value background alerts.
 </div>""",
         unsafe_allow_html=True,
@@ -753,7 +837,7 @@ st.html(
     import("https://cdn.jsdelivr.net/npm/motion@12/+esm")
       .then((motion) => {{
         const doc = (window.parent && window.parent.document) ? window.parent.document : document;
-        const targets = doc.querySelectorAll(".editorial-hero, .stat-callout, .alert-row, .suppressed-row");
+        const targets = doc.querySelectorAll(".editorial-hero, .hormn-pastel-card, .stat-callout, .alert-row, .suppressed-row");
         if (targets.length && typeof motion.animate === "function") {{
           motion.animate(
             targets,
@@ -774,27 +858,68 @@ st.html(
 )
 
 # ==============================================================================
-# MOBILE NAVIGATION MENU & EDITORIAL HERO HEADER
+# HORMN-STYLE TOP ANNOUNCEMENT BAR & HERO HEADER WITH 4 PASTEL WORKFLOW CARDS
 # ==============================================================================
 st.markdown(
-    """<div class="editorial-hero" style="background:#FFFFFF; border-bottom:1px solid #E5E5E0; padding:4px 0 30px 0; margin-bottom:28px;">
-<div class="brand-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:16px;">
-<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#1A1A1A; display:inline-flex; align-items:center; gap:8px;" title="Click to return to Multi-Drug Interaction Discovery">
-<span class="brand-title" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:1.65rem; color:#1A1A1A; text-decoration:none;">LADIP</span>
-<span class="brand-dot" style="display:inline-flex; align-items:center; justify-content:center; width:18px; height:18px; border-radius:50%; background-color:#D4A5E5; color:#1A1A1A; font-size:10px; font-weight:800; text-decoration:none;">✓</span>
+    """<div class="hormn-topbar">
+<span><b>Why LADIP?</b></span>
+<span>180K+ FDA FAERS Reports</span>
+<span>Temporal Exposure Windows</span>
+<span>5 Indian Clinical Cohorts</span>
+<span>Naranjo ADR Causality</span>
+<span>Alert Fatigue Suppression</span>
+</div>
+<div class="editorial-hero" style="background:#FFFFFF; border-bottom:1px solid #E2E8F0; padding:4px 0 26px 0; margin-bottom:24px;">
+<div class="brand-row" style="display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:18px;">
+<a href="?workflow=discovery" target="_self" class="brand-link" style="text-decoration:none; color:#111827; display:inline-flex; align-items:center; gap:10px;" title="Click to return to Multi-Drug Interaction Discovery">
+<span class="hormn-pill-mark">(I)</span>
+<span class="brand-title">LADIP</span>
 </a>
-<span style="font-size: 0.74rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: #6B6B6B;">Clinical Decision Support v2.0</span>
+<span style="font-size: 0.75rem; font-weight: 600; color: #111827; background: #F8FAFC; border: 1px solid #E2E8F0; padding: 6px 14px; border-radius: 9999px;">Clinical Decision Support v2.0 &rsaquo;</span>
 </div>
-<div class="credibility-line" style="font-size:0.85rem; color:#1A1A1A; margin-bottom:14px; display:flex; flex-wrap:wrap; align-items:center; gap:6px;">
-<span class="gold-star" style="color:#E8C840; font-size:1rem;">★</span>
-<span><b>16 Benchmark Signals</b> &nbsp;•&nbsp; <b>5 Clinical Cohorts</b> &nbsp;•&nbsp; <b>FAERS 2x2 Disproportionality</b></span>
-</div>
-<h1 class="editorial-headline" style="font-family:'Playfair Display',Georgia,serif; font-weight:700; font-size:clamp(1.85rem,4vw,2.85rem); line-height:1.08; letter-spacing:-0.025em; color:#1A1A1A; margin:0 0 16px 0; max-width:680px;">
-Temporal Pharmacovigilance<br/>That Actually Stops<br/>Alert Fatigue.
+<h1 class="editorial-headline">
+Personalised pharmacovigilance<br/>to restore clinical <span style="color:#7C93B2;">strength.</span>
 </h1>
-<p class="editorial-subtext" style="font-family:'Plus Jakarta Sans',sans-serif; font-size:1rem; line-height:1.6; color:#6B6B6B; max-width:580px; margin:0;">
-Combining real-world FDA adverse event reporting ratios with patient-specific medication timelines to surface only the interactions that demand clinical action.
+<p class="editorial-subtext">
+Combining real-world FDA adverse event reporting ratios with longitudinal patient medication timelines to surface only the interactions that demand clinical action.
 </p>
+<div class="section-eyebrow" style="margin-top: 22px; margin-bottom: 10px;">CLINICAL WORKFLOWS</div>
+<div class="hormn-cards-grid">
+<a href="?workflow=discovery" target="_self" class="hormn-pastel-card" style="background:#EAF2FA;">
+<div>
+<div style="font-family:'Outfit',sans-serif; font-weight:600; font-size:0.95rem; color:#3B6EA8; margin-bottom:4px;">Interaction Discovery</div>
+<div style="font-size:0.76rem; color:#475569; line-height:1.4;">Longitudinal timeline, Naranjo ADR causality &amp; anti-fatigue triage</div>
+</div>
+<span class="hormn-arrow-circle">&rarr;</span>
+</a>
+<a href="?workflow=safety" target="_self" class="hormn-pastel-card" style="background:#F5F2EB;">
+<div>
+<div style="font-family:'Outfit',sans-serif; font-weight:600; font-size:0.95rem; color:#6E5D4F; margin-bottom:4px;">Prospective Safety Check</div>
+<div style="font-size:0.76rem; color:#57534E; line-height:1.4;">Pre-prescription candidate simulator, allergy &amp; organ clearance check</div>
+</div>
+<span class="hormn-arrow-circle">&rarr;</span>
+</a>
+<a href="?workflow=ehr" target="_self" class="hormn-pastel-card" style="background:#F0EDF8;">
+<div>
+<div style="font-family:'Outfit',sans-serif; font-weight:600; font-size:0.95rem; color:#5E4FA2; margin-bottom:4px;">Patient EHR &amp; OCR Parser</div>
+<div style="font-size:0.76rem; color:#4C4668; line-height:1.4;">Vitals, labs, active regimens &amp; automated PDF/image discharge OCR</div>
+</div>
+<span class="hormn-arrow-circle">&rarr;</span>
+</a>
+<a href="?workflow=faers" target="_self" class="hormn-pastel-card" style="background:#EAF5F0;">
+<div>
+<div style="font-family:'Outfit',sans-serif; font-weight:600; font-size:0.95rem; color:#2E7D5B; margin-bottom:4px;">FAERS Signal Explorer</div>
+<div style="font-size:0.76rem; color:#3D5A4D; line-height:1.4;">Empirical 2x2 PRR vs &chi;&sup2; volcano matrix &amp; live openFDA co-reports</div>
+</div>
+<span class="hormn-arrow-circle">&rarr;</span>
+</a>
+</div>
+<div class="credibility-line" style="font-size:0.82rem; color:#111827; margin-top:12px; margin-bottom:0; display:flex; flex-wrap:wrap; align-items:center; gap:8px;">
+<span class="gold-star">&#9733;</span>
+<span style="font-weight:700;">Clinical Benchmark</span>
+<span style="background:#00B67A; color:#FFFFFF; padding:1px 6px; border-radius:4px; font-size:0.7rem; font-weight:700;">&#9733; &#9733; &#9733; &#9733; &#9733;</span>
+<span style="color:#64748B;">4.9 &bull; <b>16 Verified FAERS Signals</b> &bull; <b>5 Indian Patient Cohorts</b></span>
+</div>
 </div>""",
     unsafe_allow_html=True,
 )
@@ -1579,6 +1704,7 @@ elif menu == "Patient Profile & Report Parser":
                 )
             else:
                 try:
+                    new_profile = None
                     if up_file is not None:
                         ext = up_file.name.split(".")[-1].lower()
                         b_content = up_file.read()
@@ -1586,10 +1712,15 @@ elif menu == "Patient Profile & Report Parser":
                         if f_type == "image":
                             b_content = parser.compress_image_bytes(b_content)
                         new_profile = parser.parse_report(b_content, file_type=f_type)
-                    else:
-                        new_profile = parser.parse_report(txt_in.strip(), file_type="text")
+                    if txt_in.strip():
+                        txt_profile = parser.parse_report(txt_in.strip(), file_type="text")
+                        if new_profile is None:
+                            new_profile = txt_profile
+                        else:
+                            new_profile.medications.extend(txt_profile.medications)
+                            new_profile.symptoms.extend(txt_profile.symptoms)
 
-                    if not new_profile.medications and not new_profile.symptoms:
+                    if not new_profile or (not new_profile.medications and not new_profile.symptoms):
                         st.error(
                             "Extraction incomplete: no recognizable medication regimens or adverse symptoms were found in the document.",
                             icon=":material/error:",

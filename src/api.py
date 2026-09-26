@@ -15,9 +15,11 @@ from pydantic import BaseModel, Field
 
 from src.config import DB_PATH
 from src.faers.bulk_loader import FAERSDatabase
+from src.faers.client import OpenFDAClient
 from src.patient.memory import PatientStore
 from src.patient.models import Medication, PatientProfile, Symptom
 from src.patient.report_parser import MedicalReportParser
+from src.analysis.naranjo import NaranjoAlgorithm
 from src.analysis.signal_matcher import SignalMatcher
 from src.safety.drug_checker import DrugSafetyChecker
 from src.explanations.pharmacology import PharmacologyExplainer
@@ -31,12 +33,12 @@ app = FastAPI(
     title="LADIP Clinical Decision Support API",
     version="2.0.0",
     description=(
-        "REST API for Longitudinal Adverse Drug Interaction Prediction (LADIP) "
-        "and Patient Safety Portal powered by FDA FAERS disproportionality analysis."
+        "Segregated REST API Backend for Longitudinal Adverse Drug Interaction Prediction (LADIP) "
+        "powering the Next.js Clinical Web Portal and Expo React Native Mobile App."
     ),
 )
 
-# Enable CORS for mobile apps, Expo Go, and external web clients
+# Enable CORS for Next.js Web UI, mobile apps, Expo Go, and external web clients
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -52,6 +54,7 @@ matcher = SignalMatcher(db=db)
 checker = DrugSafetyChecker(db=db)
 explainer = PharmacologyExplainer()
 parser = MedicalReportParser()
+fda_client = OpenFDAClient()
 
 
 # ==============================================================================
@@ -70,6 +73,7 @@ class ScanBase64Request(BaseModel):
 
 class SimulateComboRequest(BaseModel):
     drugs: List[str] = Field(..., description="List of medication names to evaluate for multi-drug disproportionality")
+    include_live_fda: bool = Field(default=False, description="Whether to also query live openFDA co-occurrence endpoint")
 
 
 # ==============================================================================
@@ -372,37 +376,72 @@ def get_patient_daily_schedule(patient_id: str):
 @app.get("/api/patients/{patient_id}/alerts")
 @app.get("/api/patients/{patient_id}/analysis")
 def get_patient_alerts(patient_id: str, include_suppressed: bool = False):
-    """Retrieve evaluated pharmacovigilance safety signals with alert fatigue filtering."""
+    """Retrieve evaluated pharmacovigilance safety signals with alert fatigue filtering and Naranjo causality."""
     p = store.get(patient_id)
     if not p:
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
 
     alerts = matcher.match_patient(p)
     filtered = []
+    suppressed_list = []
 
     for a in alerts:
-        if not a.is_suppressed or include_suppressed:
-            expl = explainer.explain(a.combo_drugs, a.adverse_event, a.prr, a.case_count)
-            filtered.append({
-                "combo_str": a.combo_str,
-                "combo_drugs": a.combo_drugs,
-                "adverse_event": a.adverse_event,
-                "severity_tier": a.severity_tier,
-                "prr": a.prr,
-                "chi_squared": a.chi_squared,
-                "case_count": a.case_count,
-                "signal_strength": a.signal_strength,
-                "patient_has_matching_symptom": a.patient_has_matching_symptom,
-                "matching_symptom_name": a.matching_symptom_name,
-                "temporal_score": a.temporal_score,
-                "is_suppressed": a.is_suppressed,
-                "suppression_reason": a.suppression_reason,
-                "alert_priority_score": a.alert_priority_score,
+        expl = explainer.explain(a.combo_drugs, a.adverse_event, a.prr, a.case_count)
+        naranjo_payload = None
+        if a.patient_has_matching_symptom and a.trigger_drug and p.medications and p.symptoms:
+            matching_med = next((m for m in p.medications if m.drug_name == a.trigger_drug), p.medications[0])
+            matching_sym = next(
+                (
+                    s
+                    for s in p.symptoms
+                    if a.adverse_event.lower() in s.meddra_term.lower()
+                    or s.meddra_term.lower() in a.adverse_event.lower()
+                ),
+                p.symptoms[0],
+            )
+            naranjo_res = NaranjoAlgorithm.evaluate(matching_med, matching_sym, p)
+            naranjo_payload = {
+                "total_score": naranjo_res.total_score,
+                "probability_category": naranjo_res.probability_category,
+                "summary": naranjo_res.summary,
                 "trigger_drug": a.trigger_drug,
-                "clinical_rationale": a.clinical_rationale,
-                "mechanism": expl["mechanism"],
-                "recommendation": expl["recommendation"],
-            })
+                "questions": [
+                    {
+                        "id": q.id,
+                        "text": q.text,
+                        "score": q.score,
+                        "user_choice": q.user_choice,
+                        "explanation": q.explanation,
+                    }
+                    for q in naranjo_res.questions
+                ],
+            }
+
+        item = {
+            "combo_str": a.combo_str,
+            "combo_drugs": a.combo_drugs,
+            "adverse_event": a.adverse_event,
+            "severity_tier": a.severity_tier,
+            "prr": a.prr,
+            "chi_squared": a.chi_squared,
+            "case_count": a.case_count,
+            "signal_strength": a.signal_strength,
+            "patient_has_matching_symptom": a.patient_has_matching_symptom,
+            "matching_symptom_name": a.matching_symptom_name,
+            "temporal_score": a.temporal_score,
+            "is_suppressed": a.is_suppressed,
+            "suppression_reason": a.suppression_reason,
+            "alert_priority_score": a.alert_priority_score,
+            "trigger_drug": a.trigger_drug,
+            "clinical_rationale": a.clinical_rationale,
+            "mechanism": expl["mechanism"],
+            "recommendation": expl["recommendation"],
+            "naranjo": naranjo_payload,
+        }
+        if a.is_suppressed:
+            suppressed_list.append(item)
+        if not a.is_suppressed or include_suppressed:
+            filtered.append(item)
 
     return {
         "status": "success",
@@ -411,6 +450,7 @@ def get_patient_alerts(patient_id: str, include_suppressed: bool = False):
         "active_alerts_count": sum(1 for a in alerts if not a.is_suppressed),
         "suppressed_alerts_count": sum(1 for a in alerts if a.is_suppressed),
         "alerts": filtered,
+        "suppressed_alerts": suppressed_list,
     }
 
 
@@ -459,11 +499,114 @@ def simulate_drug_combination(req: SimulateComboRequest):
     if len(tokens) < 2:
         raise HTTPException(status_code=400, detail="Provide at least two medications to simulate interactions")
     signals = db.query_signals(tokens)
+    live_fda_reactions = []
+    if req.include_live_fda:
+        try:
+            live_fda_reactions = fda_client.get_combo_reactions(tokens, limit=12) or []
+        except Exception as exc:
+            logger.warning(f"openFDA live query warning: {exc}")
+            live_fda_reactions = []
+
     return {
         "status": "success",
         "drugs": tokens,
         "signals_count": len(signals),
         "signals": signals,
+        "live_fda_reactions": live_fda_reactions,
+    }
+
+
+@app.post("/api/v1/patients/extract-timeline")
+@app.post("/api/patients/extract-timeline")
+async def extract_patient_timeline(
+    file: Optional[UploadFile] = File(None),
+    raw_text: Optional[str] = Form(None),
+):
+    """Parse clinical discharge summary or prescription (PDF/Image/Text) and save extracted PatientProfile."""
+    try:
+        new_profile: Optional[PatientProfile] = None
+        if file is not None:
+            content = await file.read()
+            if not content:
+                raise HTTPException(status_code=400, detail="Uploaded clinical document is empty (0 bytes)")
+            ext = file.filename.split(".")[-1].lower() if file.filename and "." in file.filename else "image"
+            if ext == "pdf":
+                file_type = "pdf"
+            elif ext in ("txt", "text", "md", "csv"):
+                file_type = "text"
+            else:
+                file_type = "image"
+            if file_type == "image":
+                content = parser.compress_image_bytes(content)
+            new_profile = parser.parse_report(content, file_type=file_type)
+        if raw_text and raw_text.strip():
+            text_profile = parser.parse_report(raw_text.strip(), file_type="text")
+            if new_profile is None:
+                new_profile = text_profile
+            else:
+                if "patient id" in raw_text.lower() or "mrn" in raw_text.lower():
+                    new_profile.patient_id = text_profile.patient_id
+                if text_profile.name and text_profile.name != "Extracted Patient":
+                    new_profile.name = text_profile.name
+                existing_drugs = {m.drug_name.lower() for m in new_profile.medications}
+                for med in text_profile.medications:
+                    if med.drug_name.lower() not in existing_drugs:
+                        new_profile.medications.append(med)
+                        existing_drugs.add(med.drug_name.lower())
+                existing_syms = {s.description.lower() for s in new_profile.symptoms}
+                for sym in text_profile.symptoms:
+                    if sym.description.lower() not in existing_syms:
+                        new_profile.symptoms.append(sym)
+                        existing_syms.add(sym.description.lower())
+                for cond in text_profile.conditions:
+                    if cond not in new_profile.conditions:
+                        new_profile.conditions.append(cond)
+                for al in text_profile.allergies:
+                    if al not in new_profile.allergies:
+                        new_profile.allergies.append(al)
+        if new_profile is None:
+            raise HTTPException(
+                status_code=400,
+                detail="No clinical document provided: please upload a PDF/image file or enter clinical chart notes.",
+            )
+    except HTTPException:
+        raise
+    except ValueError as ve:
+        raise HTTPException(status_code=400, detail=str(ve))
+    except Exception as exc:
+        logger.error(f"Error extracting clinical timeline: {exc}")
+        raise HTTPException(status_code=400, detail=f"Failed to parse clinical document: {str(exc)}")
+
+    if not new_profile.medications and not new_profile.symptoms:
+        raise HTTPException(
+            status_code=400,
+            detail="Extraction incomplete: no recognizable medication regimens or adverse symptoms were found in the document.",
+        )
+
+    store.save(new_profile)
+    alerts = matcher.match_patient(new_profile)
+    active_alerts = [a for a in alerts if not a.is_suppressed]
+
+    return {
+        "status": "success",
+        "message": (
+            f"Successfully extracted and saved longitudinal profile for {new_profile.name} "
+            f"({new_profile.patient_id}) — {len(new_profile.medications)} medication(s) and "
+            f"{len(new_profile.symptoms)} symptom(s) indexed."
+        ),
+        "patient_id": new_profile.patient_id,
+        "profile": new_profile.to_dict(),
+        "extracted_medications": [m.drug_name for m in new_profile.medications],
+        "extracted_symptoms": [s.description for s in new_profile.symptoms],
+        "immediate_alerts": [
+            {
+                "combo": a.combo_str,
+                "adverse_event": a.adverse_event,
+                "tier": a.severity_tier,
+                "priority": a.alert_priority_score,
+            }
+            for a in active_alerts
+        ],
     }
 
 
@@ -480,6 +623,7 @@ async def scan_prescription_file(
         raise HTTPException(status_code=404, detail=f"Patient {patient_id} not found")
 
     try:
+        extracted: Optional[PatientProfile] = None
         if file is not None:
             content = await file.read()
             if not content:
@@ -494,9 +638,14 @@ async def scan_prescription_file(
             if file_type == "image":
                 content = parser.compress_image_bytes(content)
             extracted = parser.parse_report(content, file_type=file_type, default_patient_id=patient_id)
-        elif raw_text and raw_text.strip():
-            extracted = parser.parse_report(raw_text.strip(), file_type="text", default_patient_id=patient_id)
-        else:
+        if raw_text and raw_text.strip():
+            text_extracted = parser.parse_report(raw_text.strip(), file_type="text", default_patient_id=patient_id)
+            if extracted is None:
+                extracted = text_extracted
+            else:
+                extracted.medications.extend(text_extracted.medications)
+                extracted.symptoms.extend(text_extracted.symptoms)
+        if extracted is None:
             raise HTTPException(status_code=400, detail="Must provide either an uploaded file or non-empty raw_text")
     except HTTPException:
         raise

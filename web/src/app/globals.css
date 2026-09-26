@@ -1,0 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --font-outfit: 'Outfit', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-jakarta: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+  --surface: #FFFFFF;
+  --surface-muted: #F8FAFC;
+  --ink: #111827;
+  --ink-muted: #64748B;
+  --border: #E2E8F0;
+  --brand-blue: #4A7BB7;
+  --brand-slate: #7C93B2;
+  --pastel-blue: #EAF2FA;
+  --pastel-sand: #F5F2EB;
+  --pastel-lavender: #F0EDF8;
+  --pastel-mint: #EAF5F0;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background-color: #FFFFFF;
+  color: #111827;
+  font-family: var(--font-jakarta);
+  overflow-x: hidden;
+  max-width: 100vw;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Bklit.UI SVG Spring Physics Transform Origin */
+.bklit-anim-bar,
+.bklit-anim-hbar {
+  transform-box: fill-box;
+  transform-origin: left center;
+}
+
+.bklit-anim-pt,
+.bklit-anim-ring {
+  transform-box: fill-box;
+  transform-origin: center center;
+}
+
+/* Custom subtle scrollbars for tables */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: #F8FAFC;
+}
+::-webkit-scrollbar-thumb {
+  background: #CBD5E1;
+  border-radius: 9999px;
+}

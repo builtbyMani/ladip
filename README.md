@@ -22,23 +22,28 @@ In modern Electronic Health Record (EHR) systems, **90% to 96% of drug interacti
 
 ---
 
-## 🏛️ System Architecture
+## 🏛️ Segregated System Architecture (Next.js Web + Expo Mobile + FastAPI Backend)
+
+Why segregate the Web UI into **Next.js** instead of relying solely on Streamlit?
+- **Independent Frontend/Backend Scaling**: Streamlit re-executes the entire Python script on every widget interaction and couples UI state with backend compute in a single process. By segregating the **Next.js App Router Web UI (`web/`)** from the **FastAPI REST Service (`backend/main.py` & `src/api.py`)**, the frontend renders with client-side spring physics (`framer-motion`), instant tab transitions, and SSR/static asset caching while FastAPI scales independently across workers.
+- **Unified Multi-Client REST Contract**: Both the **Next.js Web Portal (`web/`)** and the **Expo React Native Mobile App (`mobile/`)** consume the exact same versioned FastAPI endpoints (`/api/v1/...`).
 
 ```
-                                  +------------------------------------+
-                                  |     Clinician Web Dashboard        |
-                                  |  (Streamlit + Bklit.UI + Motion)   |
-                                  +-----------------+------------------+
-                                                    |
-                                                    v
-+------------------------------------+    +----------------------------+
-|      Patient Mobile App            |--->|   FastAPI REST Service     |
-|   (Expo Go / React Native)         |    |   (/api/patients, /scan)   |
-+------------------------------------+    +-------------+--------------+
-                                                        |
-         +----------------------------------------------+
-         |
-         v
++------------------------------------+    +------------------------------------+
+|     Clinician Web Portal           |    |      Patient Mobile App            |
+|  (Next.js 14 + Tailwind + Motion)  |    |   (Expo Go / React Native)         |
+|  HORMN Theme + Taste-Skill UI      |    |                                    |
++-----------------+------------------+    +-----------------+------------------+
+                  |                                         |
+                  +--------------------+--------------------+
+                                       |  HTTP / REST (/api/v1/...)
+                                       v
+                        +------------------------------+
+                        |  Segregated FastAPI Backend  |
+                        |  (backend/main.py, src/api)  |
+                        +--------------+---------------+
+                                       |
+                                       v
 +----------------------------------------------------------------------+
 |                     LADIP Core Intelligence Engine                   |
 |                                                                      |
@@ -66,10 +71,21 @@ In modern Electronic Health Record (EHR) systems, **90% to 96% of drug interacti
 
 ```
 vnrvjeit/
+├── web/                          # Segregated Next.js 14 App Router Web UI (HORMN-Inspired Theme)
+│   ├── package.json              # Next.js, React 18, Framer Motion, Phosphor Icons, Tailwind CSS
+│   ├── next.config.mjs           # API rewrites proxying /api/v1/* to FastAPI Backend (:8000)
+│   ├── tailwind.config.ts        # HORMN clinical pastel tokens & Outfit / Jakarta / Mono fonts
+│   └── src/
+│       ├── app/                  # Next.js App Router (layout.tsx, page.tsx, not-found.tsx, globals.css)
+│       ├── components/           # LadipWorkspace.tsx, BklitCharts.tsx, HormnIllustrations.tsx
+│       └── lib/                  # Segregated REST API client (api.ts) & TypeScript contracts (types.ts)
+├── backend/                      # Segregated FastAPI Backend Entrypoint
+│   ├── __init__.py
+│   └── main.py                   # Uvicorn server entrypoint (uvicorn backend.main:app --port 8000)
 ├── src/
 │   ├── config.py                 # Configuration, thresholds, and paths
-│   ├── app.py                    # Streamlit clinical decision dashboard (Editorial theme)
-│   ├── api.py                    # FastAPI REST server for web & mobile clients
+│   ├── api.py                    # Core FastAPI REST service for Next.js Web & Expo Mobile clients
+│   ├── app.py                    # Legacy/Companion Streamlit clinical dashboard (HORMN theme)
 │   ├── components/
 │   │   └── bklit_charts.py       # Composable Bklit.UI charts & Motion.dev animations (CCv2)
 │   ├── normalization/
@@ -107,7 +123,7 @@ vnrvjeit/
 │   ├── test_disproportionality.py# Verified against hand-calculated 2x2 tables
 │   ├── test_temporal.py          # Validates DTAS & Naranjo scoring
 │   ├── test_signal_matcher.py    # Validates alert priority & suppression rules
-│   └── test_api.py               # Complete FastAPI & UI test suite
+│   └── test_api.py               # Complete FastAPI, Next.js Web UI & Streamlit test suite
 ├── data/
 │   ├── faers.db                  # Pre-seeded SQLite database with 16 benchmark signals
 │   └── patients/                 # Realistic Indian patient cohort JSON files
@@ -163,7 +179,7 @@ LADIP includes pre-configured realistic clinical test profiles showcasing comple
 
 ### 1. Prerequisites
 - Python 3.10 or higher
-- Node.js 18+ & npm (for mobile app)
+- Node.js 18+ & npm (for Next.js Web UI & Expo Mobile App)
 - Optional: Gemini API key for natural language pharmacological rationales
 
 ### 2. Installation
@@ -171,15 +187,11 @@ LADIP includes pre-configured realistic clinical test profiles showcasing comple
 # Enter the project workspace
 cd vnrvjeit
 
-# Set up Python virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# Install backend dependencies
+# Install Python backend dependencies
 pip install -r requirements.txt
 
-# (Optional) Set up environment variables
-cp .env.example .env
+# Install Next.js Web Frontend dependencies
+cd web && npm install && cd ..
 ```
 
 ### 3. Run Automated Tests
@@ -188,19 +200,21 @@ Verify mathematical engines, UI components, and API endpoints:
 python3 -m pytest tests/ -v
 ```
 
-### 4. Start the FastAPI REST Backend
+### 4. Start the Segregated FastAPI REST Backend
 ```bash
-uvicorn src.api:app --reload --port 8000
+uvicorn backend.main:app --reload --port 8000
 ```
 - API Root: `http://localhost:8000`
 - Interactive OpenAPI Docs: `http://localhost:8000/docs`
 
-### 5. Launch Clinician Decision Dashboard (Streamlit)
+### 5. Launch the Segregated Next.js Clinician Web UI (Recommended)
+In a new terminal window:
 ```bash
-streamlit run src/app.py
+cd web
+npm run dev
 ```
-- Opens in your browser at `http://localhost:8501`
-- Includes interactive Bklit.UI medication timeline & volcano plots, Motion.dev spring animations, prospective "Add Drug" simulator, and PDF/image report parser.
+- Opens at `http://localhost:3000`
+- Built with **Next.js 14 App Router**, **Tailwind CSS**, **Framer Motion** spring physics, **Bklit.UI Composable Charts**, and the **HORMN-inspired Clinical Design System** (`Outfit` + `Plus Jakarta Sans` + `JetBrains Mono`).
 
 ### 6. Launch Mobile Patient App (Expo Go)
 In a new terminal window:
@@ -209,8 +223,6 @@ cd mobile
 npm install
 npx expo start
 ```
-- Scan the displayed QR code using the **Expo Go** app on your iOS or Android phone.
-- Allows patients to view active prescriptions, check upcoming adverse signals, and scan physical prescriptions with their mobile camera.
 
 ---
 
@@ -223,11 +235,12 @@ npx expo start
 | `GET` | `/api/v1/patients` | List all patient profiles in the clinical cohort registry |
 | `GET` | `/api/v1/patients/{patient_id}` | Retrieve complete patient EHR, timeline, and current medications |
 | `GET` | `/api/v1/patients/{patient_id}/schedule` | Retrieve daily dosing schedule slots (Morning, Afternoon, Evening, Bedtime) |
-| `GET` | `/api/v1/patients/{patient_id}/alerts` | Compute multi-drug disproportionality, DTAS, and alert priorities |
+| `GET` | `/api/v1/patients/{patient_id}/alerts` | Compute multi-drug disproportionality, DTAS, Naranjo causality, and alert priorities |
 | `POST` | `/api/v1/patients/{patient_id}/check-drug` | Prospective drug safety check: simulate adding a new medication |
-| `POST` | `/api/v1/patients/{patient_id}/scan-report` | Upload prescription/report file or text for OCR timeline extraction |
+| `POST` | `/api/v1/patients/extract-timeline` | Parse PDF/Image/Text discharge summary and save new PatientProfile |
+| `POST` | `/api/v1/patients/{patient_id}/scan-report` | Upload prescription/report file or text for OCR timeline merge |
 | `POST` | `/api/v1/patients/{patient_id}/scan-base64` | Upload base64-encoded prescription image from mobile camera |
-| `POST` | `/api/v1/simulate` | Ad-hoc prospective simulation for arbitrary drug combinations |
+| `POST` | `/api/v1/simulate` | Ad-hoc prospective simulation for arbitrary drug combinations (with live openFDA option) |
 
 ---
 
