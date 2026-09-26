@@ -30,7 +30,12 @@ class PatientStore:
     def get(self, patient_id: str) -> Optional[PatientProfile]:
         path = self._get_path(patient_id)
         if not path.exists():
-            return None
+            # Check project root fallback directory
+            fallback_path = Path(__file__).resolve().parent.parent.parent / "data" / "patients" / f"{path.name}"
+            if fallback_path.exists():
+                path = fallback_path
+            else:
+                return None
         try:
             with open(path, "r", encoding="utf-8") as f:
                 data = json.load(f)
@@ -41,7 +46,13 @@ class PatientStore:
 
     def list_all(self) -> List[PatientProfile]:
         profiles = []
-        for file in self.storage_dir.glob("*.json"):
+        files = list(self.storage_dir.glob("*.json"))
+        if not files:
+            fallback_dir = Path(__file__).resolve().parent.parent.parent / "data" / "patients"
+            if fallback_dir.exists():
+                files = list(fallback_dir.glob("*.json"))
+
+        for file in files:
             try:
                 with open(file, "r", encoding="utf-8") as f:
                     data = json.load(f)

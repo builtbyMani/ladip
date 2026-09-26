@@ -1,5 +1,5 @@
-/** @type {import('next').NextConfig} */
-const BACKEND_URL = process.env.BACKEND_URL || "http://127.0.0.1:8000";
+const rawBackend = (process.env.BACKEND_URL || "http://127.0.0.1:8000").trim().replace(/\/+$/, "");
+const BACKEND_URL = rawBackend.replace(/\/api(\/v1)?$/, "");
 
 const nextConfig = {
   reactStrictMode: true,

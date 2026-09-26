@@ -8,9 +8,8 @@ import {
   SafetyCheckResult,
   SimulateResponse,
 } from "./types";
-
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || "";
-
+const rawApiBase = (process.env.NEXT_PUBLIC_API_URL || "").trim().replace(/\/+$/, "");
+const API_BASE = rawApiBase.replace(/\/api(\/v1)?$/, "");
 export const SCENARIO_LABELS: Record<string, string> = {
   PT_BLEED_001: "Ramesh Sharma — Warfarin + Aspirin + Ibuprofen",
   PT_STATIN_002: "Sunita Patel — Simvastatin + Amlodipine + Amiodarone",
@@ -693,12 +692,11 @@ export async function fetchPatientProfile(patientId: string): Promise<PatientPro
     const res = await fetch(`${API_BASE}/api/v1/patients/${encodeURIComponent(patientId)}`, {
       cache: "no-store",
     });
-    if (res.status === 404) return null;
     if (res.ok) {
       return await res.json();
     }
   } catch {
-    // Fallback below
+    // Network or server offline
   }
   return FALLBACK_PROFILES[patientId] || null;
 }

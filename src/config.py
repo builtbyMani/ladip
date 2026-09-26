@@ -6,7 +6,14 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
-DATA_DIR = BASE_DIR / os.getenv("DATA_DIR", "data")
+_data_env = os.getenv("DATA_DIR", "data").strip()
+if _data_env.startswith("/") and not Path(_data_env).exists():
+    DATA_DIR = BASE_DIR / _data_env.lstrip("/")
+elif Path(_data_env).is_absolute() and Path(_data_env).exists():
+    DATA_DIR = Path(_data_env)
+else:
+    DATA_DIR = BASE_DIR / _data_env.lstrip("/")
+
 FAERS_RAW_DIR = DATA_DIR / "faers_raw"
 PATIENTS_DIR = DATA_DIR / "patients"
 DB_PATH = DATA_DIR / "faers.db"

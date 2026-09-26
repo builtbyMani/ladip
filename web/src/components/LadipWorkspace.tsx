@@ -301,7 +301,8 @@ export default function LadipWorkspace() {
       fetchPatientProfile(pid),
       fetchPatientAlerts(pid, true),
     ]);
-    if (!prof) {
+    const finalProfile = prof || FALLBACK_PROFILES[pid];
+    if (!finalProfile) {
       setNotFoundReasons((prev) =>
         prev.some((r) => r.includes(pid))
           ? prev
@@ -310,12 +311,13 @@ export default function LadipWorkspace() {
       setLoadingPatient(false);
       return null;
     }
+    setNotFoundReasons([]);
     const activeFiltered = al.alerts.filter((a) => !a.is_suppressed);
     const suppressedFiltered =
       al.suppressed_alerts && al.suppressed_alerts.length > 0
         ? al.suppressed_alerts
         : al.alerts.filter((a) => a.is_suppressed);
-    setPatientProfile(prof);
+    setPatientProfile(finalProfile);
     setAlertsData({
       ...al,
       alerts: activeFiltered,
@@ -324,7 +326,7 @@ export default function LadipWorkspace() {
     setExpandedAlertIdx({ 0: true });
     setLoadingPatient(false);
     return {
-      profile: prof,
+      profile: finalProfile,
       totalSignals: activeFiltered.length + suppressedFiltered.length,
     };
   }, []);
@@ -1190,8 +1192,10 @@ export default function LadipWorkspace() {
               <button
                 type="button"
                 onClick={() => {
+                  setNotFoundReasons([]);
                   setSelectedPid("PT_BLEED_001");
                   navigateToWorkflow("discovery");
+                  loadPatientBundle("PT_BLEED_001");
                 }}
                 className="bg-[#111827] text-white px-6 py-3 rounded-full text-xs font-semibold inline-flex items-center gap-2 hover:bg-zinc-800"
               >
