@@ -5,7 +5,7 @@
     "version": "2.0.0",
     "description": "Longitudinal Adverse Drug Interaction Predictor (LADIP) — Clinical pharmacovigilance and patient medication safety copilot powered by FDA FAERS disproportionality analysis.",
     "orientation": "portrait",
-    "newArchEnabled": true,
+    "newArchEnabled": false,
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "splash": {
@@ -39,7 +39,10 @@
       "backgroundColor": "#FFFFFF"
     },
     "extra": {
-      "apiUrl": "https://ladip-production.up.railway.app"
+      "apiUrl": "https://ladip-production.up.railway.app",
+      "eas": {
+        "projectId": "6646c16b-3dba-43fe-a760-51d9fd395878"
+      }
     },
     "plugins": [
       [
@@ -50,7 +53,8 @@
         }
       ],
       "expo-asset",
-      "expo-secure-store"
+      "expo-secure-store",
+      "expo-font"
     ]
   }
 }
