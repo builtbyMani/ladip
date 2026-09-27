@@ -17,7 +17,8 @@
       "**/*"
     ],
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ladip.patient"
     },
     "android": {
       "adaptiveIcon": {
@@ -25,10 +26,9 @@
         "backgroundColor": "#FFFFFF"
       },
       "permissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.RECORD_AUDIO"
       ],
-      "package": "com.anonymous.ladippatient"
+      "package": "com.ladip.patient"
     },
     "web": {
       "favicon": "./assets/favicon.png",
@@ -37,6 +37,9 @@
       "description": "Longitudinal pharmacovigilance and multi-drug interaction predictor combining FDA FAERS reporting ratios with patient medication timelines.",
       "themeColor": "#FFFFFF",
       "backgroundColor": "#FFFFFF"
+    },
+    "extra": {
+      "apiUrl": "https://ladip-production.up.railway.app"
     },
     "plugins": [
       [

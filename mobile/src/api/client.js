@@ -7,38 +7,30 @@ import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
 import { resolveMedicineInput } from '../utils/medicineResolver';
 
-// Auto-discover the host computer's local Wi-Fi IP address from the Metro bundler
-const detectDevHost = () => {
-  try {
-    const hostUri =
-      Constants?.expoConfig?.hostUri ||
-      Constants?.manifest?.hostUri ||
-      Constants?.manifest2?.extra?.expoClient?.hostUri;
-    if (hostUri) {
-      const ip = hostUri.split(':')[0];
-      if (ip && ip !== 'localhost' && ip !== '127.0.0.1') {
-        return `http://${ip}:8000`;
-      }
-    }
-    const scriptURL = NativeModules?.SourceCode?.scriptURL;
-    if (scriptURL) {
-      const match = scriptURL.match(/https?:\/\/([^/:]+)/);
-      if (match && match[1] && match[1] !== 'localhost' && match[1] !== '127.0.0.1') {
-        return `http://${match[1]}:8000`;
-      }
-    }
-  } catch (e) {
-    console.warn('Could not auto-detect host IP:', e);
-  }
+// Deployed production FastAPI backend on Railway
+export const PRODUCTION_BACKEND_URL = 'https://ladip-production.up.railway.app';
 
-  // Default to developer machine's current Wi-Fi LAN IP
-  return 'http://192.168.29.249:8000';
+const sanitizeBaseUrl = (url) =>
+  String(url || '')
+    .trim()
+    .replace(/\/+$/, '')
+    .replace(/\/api(\/v1)?$/, '');
+
+const resolveInitialApiBaseUrl = () => {
+  const envUrl =
+    process.env.EXPO_PUBLIC_API_URL ||
+    Constants?.expoConfig?.extra?.apiUrl ||
+    PRODUCTION_BACKEND_URL;
+  return sanitizeBaseUrl(envUrl) || PRODUCTION_BACKEND_URL;
 };
 
-export let API_BASE_URL = detectDevHost();
+export let API_BASE_URL = resolveInitialApiBaseUrl();
 
 export function setApiBaseUrl(url) {
-  API_BASE_URL = url;
+  const cleaned = sanitizeBaseUrl(url);
+  if (cleaned) {
+    API_BASE_URL = cleaned;
+  }
 }
 
 // ==============================================================================
@@ -276,7 +268,7 @@ export const FALLBACK_PATIENTS = [
 ];
 
 // Helper to fetch with timeout
-async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
+async function fetchWithTimeout(url, options = {}, timeoutMs = 6000) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
   try {
@@ -291,7 +283,7 @@ async function fetchWithTimeout(url, options = {}, timeoutMs = 2500) {
 
 export async function fetchHealth() {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/health`, {}, 2000);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/health`, {}, 5000);
     return await res.json();
   } catch (err) {
     return { status: 'offline_mode', service: 'LADIP Standalone Mode' };
@@ -300,7 +292,7 @@ export async function fetchHealth() {
 
 export async function fetchPatients() {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients`, {}, 2500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients`, {}, 6000);
     if (res.ok) {
       return await res.json();
     }
@@ -325,7 +317,7 @@ export async function fetchPatients() {
 
 export async function fetchPatientProfile(patientId) {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients/${patientId}`, {}, 2500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients/${patientId}`, {}, 6000);
     if (res.ok) {
       return await res.json();
     }
@@ -350,7 +342,7 @@ export async function fetchPatientProfile(patientId) {
 
 export async function fetchSchedule(patientId) {
   try {
-    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients/${patientId}/schedule`, {}, 2500);
+    const res = await fetchWithTimeout(`${API_BASE_URL}/api/v1/patients/${patientId}/schedule`, {}, 6000);
     if (res.ok) {
       return await res.json();
     }
@@ -410,7 +402,7 @@ export async function fetchAlerts(patientId, includeSuppressed = false) {
     const res = await fetchWithTimeout(
       `${API_BASE_URL}/api/v1/patients/${patientId}/alerts?include_suppressed=${includeSuppressed}`,
       {},
-      2500
+      6000
     );
     if (res.ok) {
       return await res.json();
@@ -442,7 +434,7 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
           dose_unit: doseUnit,
         }),
       },
-      3000
+      6000
     );
     if (res.ok) {
       const apiData = await res.json();
