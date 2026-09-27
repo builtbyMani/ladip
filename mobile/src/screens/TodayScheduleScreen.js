@@ -1,8 +1,10 @@
 /**
  * Today's Medicine Schedule & Regimen Safety Shield Screen — Website-Matched UI
- * Replicates the Next.js Web UI pastel clinical cards, 3D clinical illustrations,
- * rounded 24px surfaces, and moves the Medication Dose Alarms card to the bottom
- * with zero badge/text overlap.
+ * Ordered by clinical priority:
+ * 1) ADR / Clinical Interaction Card
+ * 2) Today's Dosing Schedule (with red dot + "Interacts — see alert above" on interacting meds)
+ * 3) Clinical Context (Conditions & Allergies)
+ * 4) Clinical Workflow Bento Cards, Telemetry Charts, Medication Reminders, and Footer
  */
 import React, { useState } from 'react';
 import {
@@ -62,6 +64,21 @@ export default function TodayScheduleScreen({ navigation }) {
   const criticalAlert = activeAlerts.find((a) => a.severity_tier === 'CRITICAL');
   const highAlert = activeAlerts.find((a) => a.severity_tier === 'HIGH');
   const activeAlert = criticalAlert || highAlert;
+
+  // Build normalized set of interacting medication names from activeAlerts
+  const interactingDrugSet = new Set();
+  activeAlerts.forEach((alert) => {
+    if (Array.isArray(alert.drug_combo)) {
+      alert.drug_combo.forEach((d) => {
+        if (d) interactingDrugSet.add(String(d).trim().toLowerCase());
+      });
+    }
+    if (alert.combo_str) {
+      alert.combo_str.split('+').forEach((d) => {
+        if (d) interactingDrugSet.add(String(d).trim().toLowerCase());
+      });
+    }
+  });
 
   // Compute total daily doses and adherence %
   let totalDoses = 0;
@@ -173,7 +190,7 @@ export default function TodayScheduleScreen({ navigation }) {
 
       {/* ACTIVE MEDICATION DOSE TIME NOTIFICATION BANNER (Only appears when triggered/due) */}
       {activeDoseNotification && (
-        <MotionView delay={20}>
+        <MotionView delay={18}>
           <View style={styles.doseDueNotificationCard}>
             <View style={styles.doseDueTopRow}>
               <View style={styles.doseDueBadge}>
@@ -235,9 +252,198 @@ export default function TodayScheduleScreen({ navigation }) {
       )}
 
       {/* =========================================================================
-          WEBSITE-MATCHED 4 PASTEL CLINICAL WORKFLOW CARDS WITH 3D ILLUSTRATIONS
+          1) FIRST: ADR / CLINICAL INTERACTION CARD
          ========================================================================= */}
-      <MotionView delay={35}>
+      <MotionView delay={25}>
+        {activeAlert ? (
+          <View style={styles.alertShieldCard}>
+            <View style={styles.alertShieldTop}>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <View style={styles.criticalPillBadge}>
+                  <Ionicons name="warning" size={11} color="#DC2626" />
+                  <Text style={styles.criticalPillBadgeText}>
+                    {activeAlert.severity_tier} INTERACTION DETECTED
+                  </Text>
+                </View>
+                <Text style={styles.alertComboText}>
+                  {activeAlert.combo_str} → {activeAlert.adverse_event}
+                </Text>
+              </View>
+              <View style={styles.statBlock}>
+                <Text style={styles.statHeroNum}>{activeAlert.prr}x</Text>
+                <Text style={styles.statHeroLabel}>PRR RATIO</Text>
+              </View>
+            </View>
+
+            <Text style={styles.alertAdviceText}>
+              {activeAlert.recommendation || activeAlert.clinical_rationale}
+            </Text>
+
+            <View style={styles.alertMetaRow}>
+              <View style={styles.outlinedBadge}>
+                <Text style={styles.outlinedBadgeText}>
+                  FAERS Co-Reports: {activeAlert.case_count}
+                </Text>
+              </View>
+              {activeAlert.patient_has_matching_symptom && (
+                <View style={styles.symptomBadge}>
+                  <Text style={styles.symptomBadgeText}>Symptom Correlated</Text>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={styles.inspectSafetyBtn}
+              onPress={() => navigation.navigate('Checker')}
+              activeOpacity={0.85}
+            >
+              <Text style={styles.inspectSafetyBtnText}>
+                Check Safer Medication Alternatives
+              </Text>
+              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <View style={styles.safeShieldCard}>
+            <Text style={styles.safeEyebrow}>LONGITUDINAL SURVEILLANCE</Text>
+            <Text style={styles.safeShieldTitle}>Regimen Safe & Stable</Text>
+            <Text style={styles.safeShieldBody}>
+              No uncontrolled multi-drug interactions detected across your active prescriptions.
+              Low-grade background warnings are suppressed.
+            </Text>
+          </View>
+        )}
+      </MotionView>
+
+      {/* =========================================================================
+          2) SECOND: TODAY'S DOSING SCHEDULE (Marks Interacting Drugs with Red Dot)
+         ========================================================================= */}
+      <View style={styles.sectionHeader}>
+        <Text style={styles.sectionEyebrow}>DAILY REGIMEN</Text>
+        <Text style={styles.sectionTitle}>Today's Dosing Schedule</Text>
+      </View>
+
+      {schedule &&
+        Object.keys(schedule).map((slotKey, sIdx) => {
+          const slot = schedule[slotKey];
+          if (!slot || !slot.items || slot.items.length === 0) return null;
+          const theme = slotPastelThemes[slotKey] || slotPastelThemes.morning;
+
+          return (
+            <MotionView key={slotKey} delay={45 + sIdx * 30}>
+              <View style={styles.slotCard}>
+                <View style={styles.slotHeader}>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View
+                      style={[styles.slotAccentDot, { backgroundColor: theme.accent }]}
+                    />
+                    <Text style={styles.slotTitle}>{slot.title}</Text>
+                  </View>
+                  <View style={[styles.slotCountBadge, { backgroundColor: theme.bg }]}>
+                    <Text style={[styles.slotCountText, { color: theme.accent }]}>
+                      {slot.items.length} {slot.items.length === 1 ? 'DOSE' : 'DOSES'}
+                    </Text>
+                  </View>
+                </View>
+
+                {slot.items.map((med, idx) => {
+                  const medKey = `${slotKey}_${med.drug_name}_${idx}`;
+                  const isTaken = takenMeds[medKey];
+                  const normalizedDrugName = String(med.drug_name || '')
+                    .trim()
+                    .toLowerCase();
+                  const isInteractingDrug =
+                    Boolean(activeAlert) && interactingDrugSet.has(normalizedDrugName);
+
+                  return (
+                    <TouchableOpacity
+                      key={idx}
+                      style={[
+                        styles.medItem,
+                        idx === slot.items.length - 1 && { borderBottomWidth: 0 },
+                        isTaken && styles.medItemTaken,
+                      ]}
+                      onPress={() =>
+                        handleToggleMed(medKey, med.drug_name, med.dose, slot.title)
+                      }
+                      activeOpacity={0.75}
+                    >
+                      <Ionicons
+                        name={isTaken ? 'checkmark-circle' : 'ellipse-outline'}
+                        size={22}
+                        color={isTaken ? '#1B7A3D' : '#94A3B8'}
+                      />
+                      <View style={styles.medDetails}>
+                        <View style={styles.medPillRow}>
+                          {isInteractingDrug && (
+                            <View style={styles.interactingRedDot} />
+                          )}
+                          <View style={styles.blackDrugPill}>
+                            <Text style={styles.blackDrugPillText}>
+                              {med.drug_name} · {med.dose}
+                            </Text>
+                          </View>
+                        </View>
+                        {isInteractingDrug ? (
+                          <Text style={styles.interactsWarningText}>
+                            Interacts — see alert above
+                          </Text>
+                        ) : null}
+                        <Text style={styles.medInstructions}>
+                          {med.dose} • {med.instructions}
+                        </Text>
+                      </View>
+                      <View
+                        style={[
+                          styles.statusActionPill,
+                          isTaken && styles.statusActionPillTaken,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusLabel,
+                            isTaken && styles.statusLabelTaken,
+                          ]}
+                        >
+                          {isTaken ? 'TAKEN' : 'MARK'}
+                        </Text>
+                      </View>
+                    </TouchableOpacity>
+                  );
+                })}
+              </View>
+            </MotionView>
+          );
+        })}
+
+      {/* =========================================================================
+          3) THIRD: CLINICAL CONTEXT (Conditions & Allergies)
+         ========================================================================= */}
+      <MotionView delay={110}>
+        <View style={styles.infoStrip}>
+          <Text style={styles.sectionEyebrow}>CLINICAL CONTEXT</Text>
+          <Text style={styles.infoLine}>
+            <Text style={styles.infoLabel}>Conditions: </Text>
+            {profile?.conditions?.join(', ') || 'None recorded'}
+          </Text>
+          <Text style={styles.infoLine}>
+            <Text style={styles.infoLabel}>Allergies: </Text>
+            {profile?.allergies?.length > 0
+              ? profile.allergies.join(', ')
+              : 'No Known Drug Allergies (NKDA)'}
+          </Text>
+        </View>
+      </MotionView>
+
+      {/* =========================================================================
+          4) REMAINING SECTIONS: WORKFLOW CARDS, TELEMETRY, ALARMS & FOOTER
+         ========================================================================= */}
+      <MotionView delay={135}>
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionEyebrow}>CLINICAL WORKFLOWS</Text>
+          <Text style={styles.sectionTitle}>Safety & Diagnostic Tools</Text>
+        </View>
+
         <View style={styles.workflowGrid}>
           {/* Card 1: Interaction Discovery (#EAF2FA + Blue Vials) */}
           <TouchableOpacity
@@ -321,70 +527,8 @@ export default function TodayScheduleScreen({ navigation }) {
         </View>
       </MotionView>
 
-      {/* Regimen Safety Shield Card — Rounded 24px Website Aesthetic */}
-      <MotionView delay={55}>
-        {activeAlert ? (
-          <View style={styles.alertShieldCard}>
-            <View style={styles.alertShieldTop}>
-              <View style={{ flex: 1, marginRight: 12 }}>
-                <View style={styles.criticalPillBadge}>
-                  <Ionicons name="warning" size={11} color="#DC2626" />
-                  <Text style={styles.criticalPillBadgeText}>
-                    {activeAlert.severity_tier} INTERACTION DETECTED
-                  </Text>
-                </View>
-                <Text style={styles.alertComboText}>
-                  {activeAlert.combo_str} → {activeAlert.adverse_event}
-                </Text>
-              </View>
-              <View style={styles.statBlock}>
-                <Text style={styles.statHeroNum}>{activeAlert.prr}x</Text>
-                <Text style={styles.statHeroLabel}>PRR RATIO</Text>
-              </View>
-            </View>
-
-            <Text style={styles.alertAdviceText}>
-              {activeAlert.recommendation || activeAlert.clinical_rationale}
-            </Text>
-
-            <View style={styles.alertMetaRow}>
-              <View style={styles.outlinedBadge}>
-                <Text style={styles.outlinedBadgeText}>
-                  FAERS Co-Reports: {activeAlert.case_count}
-                </Text>
-              </View>
-              {activeAlert.patient_has_matching_symptom && (
-                <View style={styles.symptomBadge}>
-                  <Text style={styles.symptomBadgeText}>Symptom Correlated</Text>
-                </View>
-              )}
-            </View>
-
-            <TouchableOpacity
-              style={styles.inspectSafetyBtn}
-              onPress={() => navigation.navigate('Checker')}
-              activeOpacity={0.85}
-            >
-              <Text style={styles.inspectSafetyBtnText}>
-                Check Safer Medication Alternatives
-              </Text>
-              <Ionicons name="arrow-forward" size={14} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <View style={styles.safeShieldCard}>
-            <Text style={styles.safeEyebrow}>LONGITUDINAL SURVEILLANCE</Text>
-            <Text style={styles.safeShieldTitle}>Regimen Safe & Stable</Text>
-            <Text style={styles.safeShieldBody}>
-              No uncontrolled multi-drug interactions detected across your active prescriptions.
-              Low-grade background warnings are suppressed.
-            </Text>
-          </View>
-        )}
-      </MotionView>
-
       {/* Daily Adherence & Signal Telemetry */}
-      <MotionView delay={85}>
+      <MotionView delay={155}>
         <BklitRingChart
           title="Daily Regimen & Safety Telemetry"
           metrics={[
@@ -407,7 +551,7 @@ export default function TodayScheduleScreen({ navigation }) {
       </MotionView>
 
       {activeAlerts.length > 0 && (
-        <MotionView delay={110}>
+        <MotionView delay={170}>
           <BklitBarChart
             title="Active Regimen Disproportionality (PRR)"
             items={activeAlerts.map((a) => ({
@@ -420,111 +564,8 @@ export default function TodayScheduleScreen({ navigation }) {
         </MotionView>
       )}
 
-      {/* Section Title: Today's Dosing Schedule */}
-      <View style={styles.sectionHeader}>
-        <Text style={styles.sectionEyebrow}>DAILY REGIMEN</Text>
-        <Text style={styles.sectionTitle}>Today's Dosing Schedule</Text>
-      </View>
-
-      {/* Schedule Slots */}
-      {schedule &&
-        Object.keys(schedule).map((slotKey, sIdx) => {
-          const slot = schedule[slotKey];
-          if (!slot || !slot.items || slot.items.length === 0) return null;
-          const theme = slotPastelThemes[slotKey] || slotPastelThemes.morning;
-
-          return (
-            <MotionView key={slotKey} delay={130 + sIdx * 35}>
-              <View style={styles.slotCard}>
-                <View style={styles.slotHeader}>
-                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
-                    <View
-                      style={[styles.slotAccentDot, { backgroundColor: theme.accent }]}
-                    />
-                    <Text style={styles.slotTitle}>{slot.title}</Text>
-                  </View>
-                  <View style={[styles.slotCountBadge, { backgroundColor: theme.bg }]}>
-                    <Text style={[styles.slotCountText, { color: theme.accent }]}>
-                      {slot.items.length} {slot.items.length === 1 ? 'DOSE' : 'DOSES'}
-                    </Text>
-                  </View>
-                </View>
-
-                {slot.items.map((med, idx) => {
-                  const medKey = `${slotKey}_${med.drug_name}_${idx}`;
-                  const isTaken = takenMeds[medKey];
-
-                  return (
-                    <TouchableOpacity
-                      key={idx}
-                      style={[
-                        styles.medItem,
-                        idx === slot.items.length - 1 && { borderBottomWidth: 0 },
-                        isTaken && styles.medItemTaken,
-                      ]}
-                      onPress={() =>
-                        handleToggleMed(medKey, med.drug_name, med.dose, slot.title)
-                      }
-                      activeOpacity={0.75}
-                    >
-                      <Ionicons
-                        name={isTaken ? 'checkmark-circle' : 'ellipse-outline'}
-                        size={22}
-                        color={isTaken ? '#1B7A3D' : '#94A3B8'}
-                      />
-                      <View style={styles.medDetails}>
-                        <View style={styles.medPillRow}>
-                          <View style={styles.blackDrugPill}>
-                            <Text style={styles.blackDrugPillText}>{med.drug_name}</Text>
-                          </View>
-                        </View>
-                        <Text style={styles.medInstructions}>
-                          {med.dose} • {med.instructions}
-                        </Text>
-                      </View>
-                      <View
-                        style={[
-                          styles.statusActionPill,
-                          isTaken && styles.statusActionPillTaken,
-                        ]}
-                      >
-                        <Text
-                          style={[
-                            styles.statusLabel,
-                            isTaken && styles.statusLabelTaken,
-                          ]}
-                        >
-                          {isTaken ? 'TAKEN' : 'MARK'}
-                        </Text>
-                      </View>
-                    </TouchableOpacity>
-                  );
-                })}
-              </View>
-            </MotionView>
-          );
-        })}
-
-      {/* Clinical Summary Strip */}
-      <View style={styles.infoStrip}>
-        <Text style={styles.sectionEyebrow}>CLINICAL CONTEXT</Text>
-        <Text style={styles.infoLine}>
-          <Text style={styles.infoLabel}>Conditions: </Text>
-          {profile?.conditions?.join(', ') || 'None recorded'}
-        </Text>
-        <Text style={styles.infoLine}>
-          <Text style={styles.infoLabel}>Allergies: </Text>
-          {profile?.allergies?.length > 0
-            ? profile.allergies.join(', ')
-            : 'No Known Drug Allergies (NKDA)'}
-        </Text>
-      </View>
-
-      {/* =========================================================================
-          MOVED TO BOTTOM: MEDICATION DOSE ALARMS & BIOMETRIC LOCK CARD
-          (Fixed header layout so ALARMS ON badge never overlaps text)
-         ========================================================================= */}
-      <MotionView delay={180}>
+      {/* Medication Reminders / Daily Dose Alarms */}
+      <MotionView delay={185}>
         <View style={styles.reminderControlCard}>
           <View style={styles.reminderHeaderRow}>
             <View style={styles.reminderTitleColumn}>
@@ -812,7 +853,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     padding: 18,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   alertShieldTop: {
     flexDirection: 'row',
@@ -921,7 +962,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#A7F3D0',
     padding: 18,
-    marginBottom: 18,
+    marginBottom: 20,
   },
   safeEyebrow: {
     fontSize: 10,
@@ -943,7 +984,7 @@ const styles = StyleSheet.create({
   },
   sectionHeader: {
     marginBottom: 12,
-    marginTop: 4,
+    marginTop: 2,
   },
   sectionEyebrow: {
     fontSize: 10,
@@ -1011,8 +1052,16 @@ const styles = StyleSheet.create({
   },
   medPillRow: {
     flexDirection: 'row',
+    alignItems: 'center',
     flexWrap: 'wrap',
+    gap: 7,
     marginBottom: 4,
+  },
+  interactingRedDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#DC2626',
   },
   blackDrugPill: {
     backgroundColor: '#111827',
@@ -1024,6 +1073,12 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontSize: 12,
     fontWeight: '600',
+  },
+  interactsWarningText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#DC2626',
+    marginBottom: 2,
   },
   medInstructions: {
     fontSize: 12,
@@ -1057,8 +1112,8 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#E2E8F0',
     padding: 16,
-    marginTop: 6,
-    marginBottom: 16,
+    marginTop: 4,
+    marginBottom: 20,
   },
   infoLine: {
     fontSize: 12.5,
