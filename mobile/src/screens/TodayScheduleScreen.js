@@ -15,7 +15,7 @@ import {
   TouchableOpacity,
   ActivityIndicator,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/Ionicons';
 import { usePatient } from '../context/PatientContext';
 import MotionView from '../components/MotionView';
 import PatientAvatar, {
@@ -102,6 +102,9 @@ export default function TodayScheduleScreen({ navigation }) {
         interactingDrugSet.add('bactrim');
         interactingDrugSet.add('trimethoprim');
         interactingDrugSet.add('trimethoprim-sulfamethoxazole');
+      } else if (actionTarget === 'nsaid') {
+        interactingDrugSet.add('ibuprofen');
+        interactingDrugSet.add('naproxen');
       } else {
         interactingDrugSet.add(actionTarget);
       }

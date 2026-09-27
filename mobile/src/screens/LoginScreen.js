@@ -18,7 +18,7 @@ import {
   ActivityIndicator,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/Ionicons';
 import { usePatient } from '../context/PatientContext';
 import PatientAvatar, {
   HormnLogoMark,

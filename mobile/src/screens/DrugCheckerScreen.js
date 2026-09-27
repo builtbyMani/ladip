@@ -14,7 +14,7 @@ import {
   Keyboard,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/Ionicons';
 import * as ImagePicker from 'expo-image-picker';
 import { usePatient } from '../context/PatientContext';
 import { checkNewDrug, uploadPrescriptionBase64 } from '../api/client';

@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './src/components/Ionicons';
 
 import { PatientProvider, usePatient } from './src/context/PatientContext';
 import Header from './src/components/Header';

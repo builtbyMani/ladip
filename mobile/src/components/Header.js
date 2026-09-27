@@ -13,7 +13,7 @@ import {
   SafeAreaView,
   Animated,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from './Ionicons';
 import { usePatient } from '../context/PatientContext';
 import PatientAvatar, {
   HormnLogoMark,

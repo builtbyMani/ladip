@@ -12,7 +12,7 @@ import {
   TextInput,
   Platform,
 } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
+import { Ionicons } from '../components/Ionicons';
 import { usePatient } from '../context/PatientContext';
 import { API_BASE_URL, setApiBaseUrl } from '../api/client';
 import MotionView from '../components/MotionView';
