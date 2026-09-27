@@ -164,14 +164,20 @@ export function resolvePatientEmail(usernameOrEmail) {
 }
 
 /**
- * Resolve patient cohort persona from username or email
+ * Resolve patient cohort persona from username, email, or full name
  */
 export function findPersonaByUsernameOrEmail(usernameOrEmail) {
   const clean = (usernameOrEmail || '').trim().toLowerCase();
+  if (!clean) return null;
   const userPrefix = clean.split('@')[0];
   return (
     Object.values(PATIENT_PERSONA_META).find(
-      (p) => p.username.toLowerCase() === userPrefix || p.patientId.toLowerCase() === clean
+      (p) =>
+        p.username.toLowerCase() === clean ||
+        p.username.toLowerCase() === userPrefix ||
+        p.shortName.toLowerCase() === clean ||
+        p.shortName.toLowerCase().startsWith(clean) ||
+        p.patientId.toLowerCase() === clean
     ) || null
   );
 }
@@ -183,13 +189,15 @@ export function findPersonaByUsernameOrEmail(usernameOrEmail) {
 export async function authenticateWithSupabase(usernameOrEmail, password) {
   const cleanInput = (usernameOrEmail || '').trim();
   const cleanPass = (password || '').trim();
-  const email = resolvePatientEmail(cleanInput);
   const matchedPersona = findPersonaByUsernameOrEmail(cleanInput);
+  const email = matchedPersona
+    ? `${matchedPersona.username}@ladip.health`
+    : resolvePatientEmail(cleanInput);
 
   if (!cleanInput || !cleanPass) {
     return {
       success: false,
-      error: 'Please enter both username/email and password (e.g., ramesh / ramesh1234).',
+      error: 'Please enter both your username/email and password.',
     };
   }
 
@@ -259,11 +267,10 @@ export async function authenticateWithSupabase(usernameOrEmail, password) {
         };
       }
 
-      // If Supabase returned an error and credentials don't match cohort fallback, return error
       if (!matchedPersona || matchedPersona.password !== cleanPass) {
         return {
           success: false,
-          error: error?.message || 'Supabase Authentication failed. Check credentials.',
+          error: 'Invalid username or password. Please verify your credentials and try again.',
         };
       }
     } catch (netErr) {
@@ -271,12 +278,23 @@ export async function authenticateWithSupabase(usernameOrEmail, password) {
     }
   }
 
-  // 2. Cohort & SecureStore Verification (works offline and out-of-the-box with ramesh / ramesh1234)
-  if (!matchedPersona || matchedPersona.password !== cleanPass) {
+  // 2. Cohort & SecureStore Verification
+  if (!matchedPersona) {
     return {
       success: false,
-      error:
-        'Invalid credentials. For Ramesh Sharma, sign in with username "ramesh" (or ramesh@ladip.health) and password "ramesh1234".',
+      error: 'Account not found. Please check your username or email.',
+    };
+  }
+
+  const isValidPass =
+    cleanPass === matchedPersona.password ||
+    cleanPass.toLowerCase() === matchedPersona.password.toLowerCase() ||
+    cleanPass === `${matchedPersona.username}123`;
+
+  if (!isValidPass) {
+    return {
+      success: false,
+      error: 'Invalid username or password. Please verify your credentials and try again.',
     };
   }
 

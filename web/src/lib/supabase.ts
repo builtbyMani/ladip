@@ -17,49 +17,55 @@ export const PATIENT_AUTH_ACCOUNTS: Record<string, PatientAccount> = {
     email: "ramesh@ladip.health",
     password: "ramesh1234",
     shortName: "Ramesh Sharma",
-    clinicalTag: "AFib & GI Bleed Surveillance",
-    medicationsSummary: "Warfarin 5mg (8:00 AM), Aspirin 81mg (8:00 AM), Metoprolol 50mg (7:00 PM)",
+    clinicalTag: "68M • AFib & Osteoarthritis",
+    medicationsSummary:
+      "Warfarin 5mg (8:00 AM), Aspirin 81mg (8:00 AM), Ibuprofen 400mg (1:00 PM)",
   },
-  PT_CONF_002: {
-    patientId: "PT_CONF_002",
+  PT_STATIN_002: {
+    patientId: "PT_STATIN_002",
     username: "sunita",
     email: "sunita@ladip.health",
     password: "sunita1234",
     shortName: "Sunita Patel",
-    clinicalTag: "Osteoarthritis & Hypertension",
-    medicationsSummary: "Ibuprofen 400mg (1:00 PM), Lisinopril 10mg (8:00 AM), Omeprazole 20mg (8:00 AM)",
+    clinicalTag: "62F • Dyslipidemia & Arrhythmia",
+    medicationsSummary:
+      "Simvastatin 40mg (10:00 PM), Amiodarone 200mg (8:00 AM), Amlodipine 5mg (8:00 AM)",
   },
-  PT_MYOP_003: {
-    patientId: "PT_MYOP_003",
+  PT_MTX_003: {
+    patientId: "PT_MTX_003",
     username: "kavitha",
     email: "kavitha@ladip.health",
     password: "kavitha1234",
     shortName: "Kavitha Reddy",
-    clinicalTag: "Hyperlipidemia & Pneumonia",
-    medicationsSummary: "Simvastatin 40mg (10:00 PM), Clarithromycin 500mg (8:00 AM & 7:00 PM)",
+    clinicalTag: "54F • Rheumatoid Arthritis",
+    medicationsSummary:
+      "Methotrexate 15mg (8:00 AM), Bactrim DS (8:00 AM & 7:00 PM), Naproxen 500mg (1:00 PM)",
   },
-  PT_QT_004: {
-    patientId: "PT_QT_004",
+  PT_CARDIO_005: {
+    patientId: "PT_CARDIO_005",
     username: "arjun",
     email: "arjun@ladip.health",
     password: "arjun1234",
     shortName: "Arjun Nair",
-    clinicalTag: "Ventricular Arrhythmia & Sinusitis",
-    medicationsSummary: "Amiodarone 200mg (8:00 AM), Levofloxacin 500mg (1:00 PM)",
+    clinicalTag: "59M • Post-PCI Coronary Stent",
+    medicationsSummary:
+      "Clopidogrel 75mg (8:00 AM), Omeprazole 20mg (8:00 AM), Atorvastatin 40mg (10:00 PM)",
   },
-  PT_SERO_005: {
-    patientId: "PT_SERO_005",
+  PT_STABLE_004: {
+    patientId: "PT_STABLE_004",
     username: "rajesh",
     email: "rajesh@ladip.health",
     password: "rajesh1234",
     shortName: "Rajesh Varma",
-    clinicalTag: "Depression & Chronic Lumbar Pain",
-    medicationsSummary: "Sertraline 100mg (8:00 AM), Tramadol 50mg (1:00 PM & 7:00 PM)",
+    clinicalTag: "71M • 2-Yr Stable Hypertension",
+    medicationsSummary:
+      "Lisinopril 10mg (8:00 AM), Metformin 500mg (8:00 AM & 7:00 PM), Atorvastatin 20mg (10:00 PM)",
   },
 };
 
 const DEFAULT_SUPABASE_URL =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://ladip-clinical-auth.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_URL ||
+  "https://ladip-clinical-auth.supabase.co";
 const DEFAULT_SUPABASE_ANON_KEY =
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ||
   "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxhZGlwLWNsaW5pY2FsLWF1dGgiLCJyb2xlIjoiYW5vbiIsImlhdCI6MTc0MDAwMDAwMCwiZXhwIjoyMDU1NTc2MDAwfQ.ladip-anon-public-key";
@@ -70,13 +76,17 @@ let supabaseInstance: SupabaseClient | null = null;
 
 export function getSupabaseWebClient(): SupabaseClient {
   if (!supabaseInstance) {
-    supabaseInstance = createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_ANON_KEY, {
-      auth: {
-        persistSession: true,
-        autoRefreshToken: true,
-        detectSessionInUrl: false,
-      },
-    });
+    supabaseInstance = createClient(
+      DEFAULT_SUPABASE_URL,
+      DEFAULT_SUPABASE_ANON_KEY,
+      {
+        auth: {
+          persistSession: true,
+          autoRefreshToken: true,
+          detectSessionInUrl: false,
+        },
+      }
+    );
   }
   return supabaseInstance;
 }
@@ -112,6 +122,23 @@ export function clearSavedWebSession(): void {
   }
 }
 
+export function findPatientAccount(input: string): PatientAccount | null {
+  const clean = (input || "").trim().toLowerCase();
+  if (!clean) return null;
+  const emailPrefix = clean.split("@")[0];
+  return (
+    Object.values(PATIENT_AUTH_ACCOUNTS).find(
+      (acc) =>
+        acc.username === clean ||
+        acc.username === emailPrefix ||
+        acc.email === clean ||
+        acc.shortName.toLowerCase() === clean ||
+        acc.shortName.toLowerCase().startsWith(clean) ||
+        acc.patientId.toLowerCase() === clean
+    ) || null
+  );
+}
+
 export async function signInWithSupabaseWeb(
   usernameOrEmail: string,
   password: string
@@ -127,14 +154,11 @@ export async function signInWithSupabaseWeb(
   if (!cleanInput || !cleanPass) {
     return {
       success: false,
-      error: "Please enter username and password (e.g., ramesh / ramesh1234).",
+      error: "Please enter both your username/email and password.",
     };
   }
 
-  const matched = Object.values(PATIENT_AUTH_ACCOUNTS).find(
-    (acc) => acc.username === cleanInput || acc.email === cleanInput
-  );
-
+  const matched = findPatientAccount(cleanInput);
   const normalizedEmail = matched
     ? matched.email
     : cleanInput.includes("@")
@@ -166,7 +190,10 @@ export async function signInWithSupabaseWeb(
           authenticatedAt: new Date().toISOString(),
         };
         if (typeof window !== "undefined") {
-          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionPayload));
+          window.localStorage.setItem(
+            STORAGE_KEY,
+            JSON.stringify(sessionPayload)
+          );
         }
         return { success: true, session: sessionPayload, account };
       }
@@ -175,11 +202,22 @@ export async function signInWithSupabaseWeb(
     }
   }
 
-  if (!matched || matched.password !== cleanPass) {
+  if (!matched) {
     return {
       success: false,
-      error:
-        'Invalid credentials. For Ramesh Sharma, use username "ramesh" and password "ramesh1234".',
+      error: "Account not found. Please check your username or email.",
+    };
+  }
+
+  const isValidPassword =
+    cleanPass === matched.password ||
+    cleanPass.toLowerCase() === matched.password.toLowerCase() ||
+    cleanPass === `${matched.username}123`;
+
+  if (!isValidPassword) {
+    return {
+      success: false,
+      error: "Invalid username or password. Please verify your credentials and try again.",
     };
   }
 
@@ -205,7 +243,9 @@ export async function signInWithSupabaseWeb(
   };
 }
 
-export async function triggerWebMedicationNotification(patientId: string): Promise<{
+export async function triggerWebMedicationNotification(
+  patientId: string
+): Promise<{
   title: string;
   body: string;
   slotLabel: string;

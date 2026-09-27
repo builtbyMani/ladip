@@ -1,11 +1,10 @@
 /**
- * LADIP Mobile Patient Portal Login Screen
+ * LADIP Mobile Patient Portal Login Screen — Website-Matched UI
  * Implements:
- * 1. Supabase Authentication (@supabase/supabase-js) with ramesh / ramesh1234 (ramesh@ladip.health)
+ * 1. Supabase Authentication (@supabase/supabase-js) + expo-secure-store token encryption
  * 2. Elderly Patient 1-Tap Biometric Quick-Unlock (expo-secure-store + expo-local-authentication)
- *    So Ramesh logs in with ramesh / ramesh1234 once, and every time after that can unlock his
- *    medicine schedule with a single fingerprint tap.
- * 3. Distinct custom avatar icons for all 5 Indian patient cohort accounts.
+ * 3. Illustrated Indian Patient Cohort Portraits & HORMN-style Capsule Logo Mark (`[ (H) ] L A D I P`)
+ * 4. Zero password exposure in UI (no pre-filled passwords, no password hints in cards or errors).
  */
 import React, { useState } from 'react';
 import {
@@ -21,7 +20,11 @@ import {
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
-import PatientAvatar, { PATIENT_PERSONA_META, getPatientPersona } from '../components/PatientAvatar';
+import PatientAvatar, {
+  HormnLogoMark,
+  PATIENT_PERSONA_META,
+  getPatientPersona,
+} from '../components/PatientAvatar';
 import MotionView from '../components/MotionView';
 
 export default function LoginScreen() {
@@ -36,7 +39,7 @@ export default function LoginScreen() {
   } = usePatient();
 
   const [username, setUsername] = useState('ramesh');
-  const [password, setPassword] = useState('ramesh1234');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [bioUnlocking, setBioUnlocking] = useState(false);
@@ -74,18 +77,9 @@ export default function LoginScreen() {
     }
   };
 
-  const handleQuickSelectPersona = async (persona, autoLogin = false) => {
+  const handleSelectPersona = (persona) => {
     setErrorMsg(null);
     setUsername(persona.username);
-    setPassword(persona.password);
-    if (autoLogin) {
-      setSubmitting(true);
-      try {
-        await login(persona.username, persona.password);
-      } finally {
-        setSubmitting(false);
-      }
-    }
   };
 
   const handleSaveSupabaseConfig = async () => {
@@ -107,6 +101,12 @@ export default function LoginScreen() {
       style={styles.root}
       behavior={Platform.OS === 'ios' ? 'padding' : undefined}
     >
+      {/* Top Slate Value Bar matching Website */}
+      <View style={styles.slateTopBar}>
+        <Text style={styles.slateTitle}>Why LADIP?</Text>
+        <Text style={styles.slateRight}>180K+ FDA FAERS • 5 Indian Cohorts</Text>
+      </View>
+
       <ScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
@@ -116,12 +116,7 @@ export default function LoginScreen() {
           {/* Brand Logo Header */}
           <View style={styles.brandHeader}>
             <View style={styles.brandTopRow}>
-              <View style={styles.logoRow}>
-                <Text style={styles.logoText}>LADIP</Text>
-                <View style={styles.logoDot}>
-                  <Text style={styles.logoDotCheck}>✓</Text>
-                </View>
-              </View>
+              <HormnLogoMark size="md" />
               <TouchableOpacity
                 style={styles.supaBadge}
                 onPress={() => setShowSupaConfig(!showSupaConfig)}
@@ -152,7 +147,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.supaInput}
                 placeholder="https://your-project.supabase.co"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 value={customSupaUrl}
                 onChangeText={setCustomSupaUrl}
@@ -160,7 +155,7 @@ export default function LoginScreen() {
               <TextInput
                 style={styles.supaInput}
                 placeholder="Supabase Anon Public Key (eyJhbGci...)"
-                placeholderTextColor="#9CA3AF"
+                placeholderTextColor="#94A3B8"
                 autoCapitalize="none"
                 value={customSupaKey}
                 onChangeText={setCustomSupaKey}
@@ -177,10 +172,13 @@ export default function LoginScreen() {
 
           {/* Editorial Title */}
           <View style={styles.heroBlock}>
-            <Text style={styles.eyebrow}>PATIENT SAFETY PORTAL</Text>
+            <View style={styles.eyebrowPill}>
+              <Ionicons name="sparkles" size={11} color="#3B6EA8" />
+              <Text style={styles.eyebrowPillText}>PATIENT SAFETY PORTAL</Text>
+            </View>
             <Text style={styles.heroTitle}>Sign in to your medication timeline</Text>
             <Text style={styles.heroSubtitle}>
-              Access your personalised daily regimen, scheduled medication reminders, and optical
+              Access your personalised daily regimen, multi-drug FAERS safety alerts, and optical
               medicine scanner.
             </Text>
           </View>
@@ -192,9 +190,9 @@ export default function LoginScreen() {
             <View style={styles.biometricCard}>
               <View style={styles.biometricHeaderRow}>
                 <View style={styles.biometricPill}>
-                  <Ionicons name="finger-print" size={13} color="#FFFFFF" />
+                  <Ionicons name="finger-print" size={12} color="#FFFFFF" />
                   <Text style={styles.biometricPillText}>
-                    1-TAP ELDERLY BIOMETRIC UNLOCK READY
+                    1-TAP ELDERLY BIOMETRIC UNLOCK
                   </Text>
                 </View>
                 <TouchableOpacity onPress={forgetDeviceSession}>
@@ -209,12 +207,11 @@ export default function LoginScreen() {
                     Welcome back, {savedPersona.shortName}
                   </Text>
                   <Text style={styles.biometricMeta}>
-                    {savedSession.email || `${savedPersona.username}@ladip.health`} • Saved in{' '}
-                    <Text style={styles.monoBold}>expo-secure-store</Text>
+                    {savedSession.email || `${savedPersona.username}@ladip.health`} • Paired with{' '}
+                    <Text style={styles.monoBold}>SecureStore</Text>
                   </Text>
                   <Text style={styles.biometricSubnote}>
-                    No need to type your password again — tap once below to unlock your medicine
-                    schedule.
+                    Tap once below to unlock your medicine schedule with your fingerprint.
                   </Text>
                 </View>
               </View>
@@ -229,7 +226,7 @@ export default function LoginScreen() {
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
                   <>
-                    <Ionicons name="finger-print" size={22} color="#FFFFFF" />
+                    <Ionicons name="finger-print" size={20} color="#FFFFFF" />
                     <Text style={styles.biometricUnlockBtnText}>
                       Unlock with {biometricStatus?.biometricLabel || 'Fingerprint / Face ID'}
                     </Text>
@@ -247,18 +244,26 @@ export default function LoginScreen() {
             {(() => {
               const cleanUser = (username || '').trim().toLowerCase().split('@')[0];
               const matched =
-                cohortPersonas.find((p) => p.username === cleanUser) ||
-                PATIENT_PERSONA_META.PT_BLEED_001;
+                cohortPersonas.find(
+                  (p) =>
+                    p.username === cleanUser ||
+                    p.shortName.toLowerCase().startsWith(cleanUser)
+                ) || PATIENT_PERSONA_META.PT_BLEED_001;
               return (
-                <View style={styles.selectedPreviewStrip}>
+                <View
+                  style={[
+                    styles.selectedPreviewStrip,
+                    { backgroundColor: matched.cardSoftBg || '#EAF2FA' },
+                  ]}
+                >
                   <PatientAvatar patientId={matched.patientId} size="md" />
                   <View style={{ flex: 1 }}>
                     <Text style={styles.previewEyebrow}>
-                      SUPABASE AUTH + EXPO-SECURE-STORE
+                      SUPABASE AUTHENTICATION + BIOMETRIC PAIRING
                     </Text>
                     <Text style={styles.previewName}>{matched.shortName}</Text>
                     <Text style={styles.previewMeta}>
-                      {matched.ageSex} • {matched.clinicalTag}
+                      {matched.clinicalTag} • {matched.regimenShort}
                     </Text>
                   </View>
                 </View>
@@ -268,11 +273,11 @@ export default function LoginScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.inputLabel}>USERNAME OR SUPABASE EMAIL</Text>
               <View style={styles.inputWrap}>
-                <Ionicons name="person-outline" size={16} color="#6B6B6B" />
+                <Ionicons name="person-outline" size={16} color="#64748B" />
                 <TextInput
                   style={styles.textInput}
                   placeholder="ramesh or ramesh@ladip.health"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor="#94A3B8"
                   autoCapitalize="none"
                   autoCorrect={false}
                   value={username}
@@ -287,11 +292,11 @@ export default function LoginScreen() {
             <View style={styles.fieldGroup}>
               <Text style={styles.inputLabel}>PASSWORD</Text>
               <View style={styles.inputWrap}>
-                <Ionicons name="lock-closed-outline" size={16} color="#6B6B6B" />
+                <Ionicons name="lock-closed-outline" size={16} color="#64748B" />
                 <TextInput
                   style={styles.textInput}
-                  placeholder="ramesh1234"
-                  placeholderTextColor="#9CA3AF"
+                  placeholder="Enter your password"
+                  placeholderTextColor="#94A3B8"
                   secureTextEntry={!showPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -309,7 +314,7 @@ export default function LoginScreen() {
                   <Ionicons
                     name={showPassword ? 'eye-off-outline' : 'eye-outline'}
                     size={18}
-                    color="#6B6B6B"
+                    color="#64748B"
                   />
                 </TouchableOpacity>
               </View>
@@ -332,36 +337,22 @@ export default function LoginScreen() {
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <>
+                  <Ionicons name="lock-closed" size={15} color="#FFFFFF" />
                   <Text style={styles.signInBtnText}>
-                    Sign In & Pair Fingerprint Unlock
+                    Sign In with Supabase & Pair Fingerprint
                   </Text>
-                  <Ionicons name="arrow-forward" size={16} color="#FFFFFF" />
                 </>
               )}
             </TouchableOpacity>
-
-            <View style={styles.proTipBox}>
-              <Ionicons name="finger-print-outline" size={16} color="#1B7A3D" />
-              <Text style={styles.proTipText}>
-                <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>
-                  Elderly Biometric Pairing:{' '}
-                </Text>
-                Sign in once with <Text style={styles.monoBold}>ramesh</Text> /{' '}
-                <Text style={styles.monoBold}>ramesh1234</Text>. Your Supabase session is saved in{' '}
-                <Text style={styles.monoBold}>expo-secure-store</Text> so every time after that you
-                can unlock your schedule with a single fingerprint tap via{' '}
-                <Text style={styles.monoBold}>expo-local-authentication</Text>.
-              </Text>
-            </View>
           </View>
         </MotionView>
 
-        {/* Patient Cohort Quick Selector with Distinct Icons */}
+        {/* Patient Cohort Account Selector with Illustrated Icons (No Passwords Shown) */}
         <MotionView delay={65}>
           <View style={styles.cohortSection}>
-            <Text style={styles.cohortEyebrow}>PATIENT COHORT ACCOUNTS</Text>
+            <Text style={styles.cohortEyebrow}>SELECT PATIENT COHORT ACCOUNT</Text>
             <Text style={styles.cohortSub}>
-              Tap any patient profile below to auto-fill credentials or sign in:
+              Tap a patient profile below to select their account:
             </Text>
 
             <View style={styles.cohortList}>
@@ -375,27 +366,55 @@ export default function LoginScreen() {
                       styles.cohortCard,
                       isCurrent && styles.cohortCardActive,
                     ]}
-                    onPress={() => handleQuickSelectPersona(persona, false)}
-                    activeOpacity={0.8}
+                    onPress={() => handleSelectPersona(persona)}
+                    activeOpacity={0.85}
                   >
-                    <PatientAvatar patientId={persona.patientId} size="sm" />
+                    <PatientAvatar patientId={persona.patientId} size="md" />
                     <View style={{ flex: 1 }}>
                       <View style={styles.cohortTopRow}>
-                        <Text style={styles.cohortName}>{persona.shortName}</Text>
-                        <Text style={styles.cohortCredPill}>
-                          {persona.username} / {persona.password}
+                        <Text
+                          style={[
+                            styles.cohortName,
+                            isCurrent && { color: '#FFFFFF' },
+                          ]}
+                        >
+                          {persona.shortName}
                         </Text>
+                        <View
+                          style={[
+                            styles.cohortUserBadge,
+                            isCurrent && { backgroundColor: 'rgba(255,255,255,0.16)' },
+                          ]}
+                        >
+                          <Text
+                            style={[
+                              styles.cohortUserBadgeText,
+                              isCurrent && { color: '#FFFFFF' },
+                            ]}
+                          >
+                            @{persona.username}
+                          </Text>
+                        </View>
                       </View>
-                      <Text style={styles.cohortTag} numberOfLines={1}>
-                        {persona.clinicalTag} • {persona.regimenShort}
+                      <Text
+                        style={[
+                          styles.cohortTag,
+                          isCurrent && { color: '#CBD5E1' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {persona.clinicalTag}
+                      </Text>
+                      <Text
+                        style={[
+                          styles.cohortRegimen,
+                          isCurrent && { color: '#7DD3FC' },
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {persona.regimenShort}
                       </Text>
                     </View>
-                    <TouchableOpacity
-                      style={styles.instantLoginPill}
-                      onPress={() => handleQuickSelectPersona(persona, true)}
-                    >
-                      <Text style={styles.instantLoginText}>Login</Text>
-                    </TouchableOpacity>
                   </TouchableOpacity>
                 );
               })}
@@ -412,9 +431,27 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#FFFFFF',
   },
+  slateTopBar: {
+    backgroundColor: '#87909A',
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  slateTitle: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  slateRight: {
+    color: 'rgba(255,255,255,0.9)',
+    fontSize: 10.5,
+    fontWeight: '500',
+  },
   scrollContent: {
-    paddingHorizontal: 20,
-    paddingTop: 26,
+    paddingHorizontal: 18,
+    paddingTop: 20,
     paddingBottom: 44,
     width: '100%',
     maxWidth: 540,
@@ -423,7 +460,7 @@ const styles = StyleSheet.create({
   brandHeader: {
     marginBottom: 16,
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E0',
+    borderBottomColor: '#F1F5F9',
     paddingBottom: 14,
   },
   brandTopRow: {
@@ -432,87 +469,64 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     gap: 8,
   },
-  logoRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  logoText: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 28,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.6,
-  },
-  logoDot: {
-    width: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: '#1B7A3D',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  logoDotCheck: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '800',
-  },
   supaBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#F0FDF4',
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    paddingHorizontal: 9,
+    borderColor: 'rgba(27, 122, 61, 0.25)',
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 9999,
   },
   supaBadgeText: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B7A3D',
     letterSpacing: 0.6,
   },
   brandSub: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#6B6B6B',
+    color: '#64748B',
     letterSpacing: 1,
-    marginTop: 4,
+    marginTop: 6,
   },
   supaConfigCard: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderColor: '#E2E8F0',
     padding: 14,
     marginBottom: 16,
   },
   supaConfigEyebrow: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B7A3D',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   supaConfigDesc: {
     fontSize: 11,
-    color: '#6B6B6B',
+    color: '#64748B',
     lineHeight: 16,
     marginBottom: 10,
   },
   supaInput: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    paddingHorizontal: 10,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 12,
     paddingVertical: 8,
     fontSize: 12,
-    color: '#1A1A1A',
+    color: '#111827',
     marginBottom: 8,
   },
   supaSaveBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111827',
     paddingVertical: 9,
     borderRadius: 9999,
     alignItems: 'center',
@@ -531,30 +545,43 @@ const styles = StyleSheet.create({
   heroBlock: {
     marginBottom: 16,
   },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#1B7A3D',
-    letterSpacing: 1,
-    marginBottom: 4,
+  eyebrowPill: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  eyebrowPillText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#3B6EA8',
+    letterSpacing: 0.9,
   },
   heroTitle: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 26,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    lineHeight: 32,
+    fontSize: 25,
+    fontWeight: '800',
+    color: '#111827',
+    lineHeight: 31,
+    letterSpacing: -0.5,
     marginBottom: 6,
   },
   heroSubtitle: {
     fontSize: 13,
-    color: '#6B6B6B',
+    color: '#64748B',
     lineHeight: 19,
   },
   biometricCard: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 24,
     borderWidth: 1.5,
-    borderColor: '#1B7A3D',
+    borderColor: 'rgba(27, 122, 61, 0.38)',
     padding: 16,
     marginBottom: 18,
   },
@@ -569,20 +596,20 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 5,
     backgroundColor: '#1B7A3D',
-    paddingHorizontal: 9,
+    paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 9999,
   },
   biometricPillText: {
     color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     letterSpacing: 0.7,
   },
   forgetLinkText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#6B6B6B',
+    color: '#64748B',
     textDecorationLine: 'underline',
   },
   biometricProfileRow: {
@@ -592,10 +619,9 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   biometricWelcome: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 19,
+    fontSize: 17,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   biometricMeta: {
     fontSize: 11,
@@ -604,59 +630,57 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
   biometricSubnote: {
-    fontSize: 12,
-    color: '#6B6B6B',
-    lineHeight: 17,
-    marginTop: 4,
+    fontSize: 11.5,
+    color: '#475569',
+    lineHeight: 16,
+    marginTop: 3,
   },
   biometricUnlockBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 10,
+    gap: 8,
     backgroundColor: '#1B7A3D',
-    paddingVertical: 15,
+    paddingVertical: 13,
     borderRadius: 9999,
   },
   biometricUnlockBtnText: {
     color: '#FFFFFF',
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '700',
-    letterSpacing: 0.2,
   },
   loginCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderColor: '#E2E8F0',
     padding: 18,
-    marginBottom: 22,
+    marginBottom: 20,
   },
   selectedPreviewStrip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 12,
-    backgroundColor: '#F5F5F0',
-    borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderRadius: 18,
     padding: 12,
     marginBottom: 16,
   },
   previewEyebrow: {
-    fontSize: 8,
-    fontWeight: '700',
+    fontSize: 8.5,
+    fontWeight: '800',
     color: '#1B7A3D',
     letterSpacing: 0.8,
   },
   previewName: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 16,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
+    marginTop: 1,
   },
   previewMeta: {
     fontSize: 11,
-    color: '#6B6B6B',
-    marginTop: 1,
+    color: '#475569',
+    marginTop: 2,
   },
   fieldGroup: {
     marginBottom: 14,
@@ -664,7 +688,7 @@ const styles = StyleSheet.create({
   inputLabel: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6B6B6B',
+    color: '#64748B',
     letterSpacing: 0.8,
     marginBottom: 6,
   },
@@ -672,15 +696,18 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    borderBottomWidth: 1.5,
-    borderBottomColor: '#1A1A1A',
-    paddingVertical: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 14,
+    paddingHorizontal: 12,
+    paddingVertical: 9,
+    backgroundColor: '#F8FAFC',
   },
   textInput: {
     flex: 1,
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   errorBox: {
     flexDirection: 'row',
@@ -688,8 +715,8 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
-    borderColor: '#DC2626',
-    borderLeftWidth: 4,
+    borderColor: '#FECACA',
+    borderRadius: 14,
     padding: 10,
     marginBottom: 14,
   },
@@ -704,53 +731,36 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: '#1A1A1A',
-    paddingVertical: 14,
+    backgroundColor: '#111827',
+    paddingVertical: 13,
     borderRadius: 9999,
     marginTop: 4,
   },
   signInBtnText: {
     color: '#FFFFFF',
-    fontSize: 14,
+    fontSize: 13.5,
     fontWeight: '700',
-    letterSpacing: 0.2,
-  },
-  proTipBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    gap: 8,
-    backgroundColor: '#F5F5F0',
-    borderWidth: 1,
-    borderColor: '#E5E5E0',
-    padding: 10,
-    marginTop: 14,
-  },
-  proTipText: {
-    flex: 1,
-    fontSize: 11,
-    color: '#6B6B6B',
-    lineHeight: 16,
   },
   monoBold: {
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   cohortSection: {
     borderTopWidth: 1,
-    borderTopColor: '#E5E5E0',
+    borderTopColor: '#F1F5F9',
     paddingTop: 16,
   },
   cohortEyebrow: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6B6B6B',
+    color: '#94A3B8',
     letterSpacing: 0.9,
-    marginBottom: 4,
+    marginBottom: 3,
   },
   cohortSub: {
     fontSize: 12,
-    color: '#6B6B6B',
+    color: '#64748B',
     marginBottom: 12,
   },
   cohortList: {
@@ -759,50 +769,49 @@ const styles = StyleSheet.create({
   cohortCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 10,
-    backgroundColor: '#FFFFFF',
+    gap: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    padding: 10,
+    borderColor: '#E2E8F0',
+    padding: 12,
   },
   cohortCardActive: {
-    backgroundColor: '#F5F5F0',
-    borderColor: '#1A1A1A',
+    backgroundColor: '#111827',
+    borderColor: '#111827',
   },
   cohortTopRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: 6,
-    flexWrap: 'wrap',
   },
   cohortName: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
   },
-  cohortCredPill: {
+  cohortUserBadge: {
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 999,
+  },
+  cohortUserBadgeText: {
     fontSize: 10,
     fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    color: '#6B6B6B',
-    backgroundColor: '#F5F5F0',
-    paddingHorizontal: 6,
-    paddingVertical: 2,
+    fontWeight: '700',
+    color: '#334155',
   },
   cohortTag: {
     fontSize: 11,
-    color: '#6B6B6B',
+    color: '#64748B',
     marginTop: 2,
   },
-  instantLoginPill: {
-    backgroundColor: '#1A1A1A',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 9999,
-  },
-  instantLoginText: {
-    color: '#FFFFFF',
-    fontSize: 11,
-    fontWeight: '700',
+  cohortRegimen: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: '#3B6EA8',
+    marginTop: 2,
   },
 });

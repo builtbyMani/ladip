@@ -1,6 +1,8 @@
 /**
- * Today's Medicine Schedule & Regimen Safety Shield Screen
- * Editorial Health-Tech Aesthetic with Bklit.UI Telemetry & Motion.dev Spring Physics
+ * Today's Medicine Schedule & Regimen Safety Shield Screen — Website-Matched UI
+ * Replicates the Next.js Web UI pastel clinical cards, 3D clinical illustrations,
+ * rounded 24px surfaces, and moves the Medication Dose Alarms card to the bottom
+ * with zero badge/text overlap.
  */
 import React, { useState } from 'react';
 import {
@@ -10,12 +12,17 @@ import {
   ScrollView,
   TouchableOpacity,
   ActivityIndicator,
-  Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import MotionView from '../components/MotionView';
-import PatientAvatar from '../components/PatientAvatar';
+import PatientAvatar, {
+  BlueVialsIllustration,
+  SandInjectorsIllustration,
+  LavenderTabletsIllustration,
+  MintBottleIllustration,
+  getPatientPersona,
+} from '../components/PatientAvatar';
 import { BklitBarChart, BklitRingChart } from '../components/BklitChart';
 import Footer from '../components/Footer';
 
@@ -44,12 +51,13 @@ export default function TodayScheduleScreen({ navigation }) {
   if (loading) {
     return (
       <View style={styles.centerContainer}>
-        <ActivityIndicator size="large" color="#1B7A3D" />
+        <ActivityIndicator size="large" color="#3B6EA8" />
         <Text style={styles.loadingText}>Syncing longitudinal safety profile...</Text>
       </View>
     );
   }
 
+  const persona = getPatientPersona(currentPatientId || profile?.patient_id, profile?.name);
   const activeAlerts = (alerts || []).filter((a) => !a.is_suppressed);
   const criticalAlert = activeAlerts.find((a) => a.severity_tier === 'CRITICAL');
   const highAlert = activeAlerts.find((a) => a.severity_tier === 'HIGH');
@@ -103,11 +111,11 @@ export default function TodayScheduleScreen({ navigation }) {
     }
   };
 
-  const slotAccentColors = {
-    morning: '#E8C840',
-    afternoon: '#D4A5E5',
-    evening: '#1B7A3D',
-    bedtime: '#6B6B6B',
+  const slotPastelThemes = {
+    morning: { bg: '#EAF2FA', accent: '#3B6EA8', pillBg: '#DCEBFA' },
+    afternoon: { bg: '#F5F2EB', accent: '#8C6239', pillBg: '#EDE6D8' },
+    evening: { bg: '#EAF5F0', accent: '#1B7A3D', pillBg: '#D1FAE5' },
+    bedtime: { bg: '#F0EDF8', accent: '#5E4FA2', pillBg: '#EDE9FE' },
   };
 
   return (
@@ -117,22 +125,33 @@ export default function TodayScheduleScreen({ navigation }) {
       showsHorizontalScrollIndicator={false}
       directionalLockEnabled={true}
     >
-      {/* Editorial Greeting & Quick Action */}
+      {/* Website-Matched Hero Eyebrow & Greeting */}
       <MotionView delay={10}>
+        <View style={styles.topEyebrowRow}>
+          <View style={styles.engineBadge}>
+            <Ionicons name="sparkles" size={11} color="#3B6EA8" />
+            <Text style={styles.engineBadgeText}>LONGITUDINAL PHARMACOVIGILANCE</Text>
+          </View>
+          <Text style={styles.signalRatioText}>
+            {activeAlerts.length} Active Alerts
+          </Text>
+        </View>
+
         <View style={styles.greetingBar}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
+          <View style={styles.greetingLeft}>
             <PatientAvatar
               patientId={currentPatientId || profile?.patient_id}
               fallbackName={profile?.name}
-              size="md"
+              size="lg"
             />
             <View style={{ flex: 1 }}>
               <Text style={styles.welcomeText}>
-                Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Patient'}
+                Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Ramesh'}
               </Text>
+              <Text style={styles.personaMetaText}>{persona.clinicalTag}</Text>
               <Text style={styles.dateText}>
                 {new Date().toLocaleDateString('en-IN', {
-                  weekday: 'long',
+                  weekday: 'short',
                   day: 'numeric',
                   month: 'short',
                   year: 'numeric',
@@ -152,19 +171,19 @@ export default function TodayScheduleScreen({ navigation }) {
         </View>
       </MotionView>
 
-      {/* ACTIVE MEDICATION DOSE TIME NOTIFICATION BANNER */}
+      {/* ACTIVE MEDICATION DOSE TIME NOTIFICATION BANNER (Only appears when triggered/due) */}
       {activeDoseNotification && (
         <MotionView delay={20}>
           <View style={styles.doseDueNotificationCard}>
             <View style={styles.doseDueTopRow}>
               <View style={styles.doseDueBadge}>
-                <Ionicons name="notifications" size={13} color="#FFFFFF" />
+                <Ionicons name="notifications" size={12} color="#FFFFFF" />
                 <Text style={styles.doseDueBadgeText}>
                   TIME TO TAKE MEDICATION • {activeDoseNotification.shortTime}
                 </Text>
               </View>
               <TouchableOpacity onPress={dismissDoseNotification}>
-                <Ionicons name="close" size={18} color="#6B6B6B" />
+                <Ionicons name="close" size={18} color="#64748B" />
               </TouchableOpacity>
             </View>
 
@@ -186,94 +205,13 @@ export default function TodayScheduleScreen({ navigation }) {
                 onPress={handleSnoozeNotification}
                 activeOpacity={0.85}
               >
-                <Ionicons name="time-outline" size={15} color="#1A1A1A" />
+                <Ionicons name="time-outline" size={15} color="#111827" />
                 <Text style={styles.doseDueSnoozeText}>Snooze 15m</Text>
               </TouchableOpacity>
             </View>
           </View>
         </MotionView>
       )}
-
-      {/* MEDICATION DOSE REMINDERS & BIOMETRIC UNLOCK STATUS STRIP */}
-      <MotionView delay={30}>
-        <View style={styles.reminderControlCard}>
-          <View style={styles.reminderHeaderRow}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6, flex: 1 }}>
-              <Ionicons
-                name={remindersEnabled ? 'alarm-outline' : 'notifications-off-outline'}
-                size={16}
-                color="#1B7A3D"
-              />
-              <Text style={styles.reminderEyebrow}>
-                MEDICATION DOSE ALARMS ({scheduledReminders.length || 3} DAILY SLOTS)
-              </Text>
-            </View>
-            <TouchableOpacity
-              style={[
-                styles.reminderTogglePill,
-                !remindersEnabled && { backgroundColor: '#F5F5F0', borderColor: '#E5E5E0' },
-              ]}
-              onPress={toggleRemindersEnabled}
-            >
-              <Text
-                style={[
-                  styles.reminderToggleText,
-                  !remindersEnabled && { color: '#6B6B6B' },
-                ]}
-              >
-                {remindersEnabled ? 'ALARMS ON' : 'PAUSED'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.alarmPillsRow}>
-            {(scheduledReminders.length > 0
-              ? scheduledReminders
-              : [
-                  { slotKey: 'morning', shortTime: '8:00 AM', medCount: 2 },
-                  { slotKey: 'afternoon', shortTime: '1:00 PM', medCount: 1 },
-                  { slotKey: 'evening', shortTime: '7:00 PM', medCount: 1 },
-                ]
-            ).map((alarm) => (
-              <TouchableOpacity
-                key={alarm.slotKey}
-                style={styles.alarmSlotChip}
-                onPress={() => sendDoseNotificationNow(alarm.slotKey)}
-                activeOpacity={0.8}
-              >
-                <Ionicons name="notifications-outline" size={12} color="#1B7A3D" />
-                <Text style={styles.alarmSlotChipText}>
-                  {alarm.shortTime} ({alarm.medCount} {alarm.medCount === 1 ? 'med' : 'meds'})
-                </Text>
-              </TouchableOpacity>
-            ))}
-          </View>
-
-          <View style={styles.reminderBtnRow}>
-            <TouchableOpacity
-              style={styles.triggerReminderBtn}
-              onPress={handleSendTestReminder}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="notifications" size={14} color="#FFFFFF" />
-              <Text style={styles.triggerReminderBtnText}>
-                Notify Dose Due Now
-              </Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.lockBiometricBtn}
-              onPress={lockSession}
-              activeOpacity={0.85}
-            >
-              <Ionicons name="finger-print" size={14} color="#1A1A1A" />
-              <Text style={styles.lockBiometricBtnText}>
-                1-Tap Fingerprint Lock
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </MotionView>
 
       {/* Inline Error Banner if API sync encountered an error */}
       {error && (
@@ -296,15 +234,105 @@ export default function TodayScheduleScreen({ navigation }) {
         </View>
       )}
 
-      {/* Regimen Safety Shield Card — Editorial White Card */}
-      <MotionView delay={50}>
+      {/* =========================================================================
+          WEBSITE-MATCHED 4 PASTEL CLINICAL WORKFLOW CARDS WITH 3D ILLUSTRATIONS
+         ========================================================================= */}
+      <MotionView delay={35}>
+        <View style={styles.workflowGrid}>
+          {/* Card 1: Interaction Discovery (#EAF2FA + Blue Vials) */}
+          <TouchableOpacity
+            style={[styles.workflowCard, { backgroundColor: '#EAF2FA' }]}
+            onPress={() => navigation.navigate('Schedule')}
+            activeOpacity={0.88}
+          >
+            <View style={styles.workflowCardTop}>
+              <Text style={[styles.workflowCardTitle, { color: '#3B6EA8' }]}>
+                Interaction{'\n'}Discovery
+              </Text>
+              <View style={styles.workflowDarkArrow}>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={styles.workflowCardSub}>Longitudinal FAERS & Naranjo</Text>
+            <View style={styles.workflowIllusHolder}>
+              <BlueVialsIllustration scale={0.95} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Card 2: Prospective Safety (#F5F2EB + Sand Injectors) */}
+          <TouchableOpacity
+            style={[styles.workflowCard, { backgroundColor: '#F5F2EB' }]}
+            onPress={() => navigation.navigate('Checker')}
+            activeOpacity={0.88}
+          >
+            <View style={styles.workflowCardTop}>
+              <Text style={[styles.workflowCardTitle, { color: '#8C6239' }]}>
+                Prospective{'\n'}Safety
+              </Text>
+              <View style={styles.workflowDarkArrow}>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={styles.workflowCardSub}>OTC & Brand Strip Scanner</Text>
+            <View style={styles.workflowIllusHolder}>
+              <SandInjectorsIllustration scale={0.95} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Card 3: EHR & OCR Parser (#F0EDF8 + Lavender Tablets) */}
+          <TouchableOpacity
+            style={[styles.workflowCard, { backgroundColor: '#F0EDF8' }]}
+            onPress={() => navigation.navigate('Scanner')}
+            activeOpacity={0.88}
+          >
+            <View style={styles.workflowCardTop}>
+              <Text style={[styles.workflowCardTitle, { color: '#5E4FA2' }]}>
+                EHR & OCR{'\n'}Parser
+              </Text>
+              <View style={styles.workflowDarkArrow}>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={styles.workflowCardSub}>Scan Rx & Lab Timeline</Text>
+            <View style={styles.workflowIllusHolder}>
+              <LavenderTabletsIllustration scale={0.95} />
+            </View>
+          </TouchableOpacity>
+
+          {/* Card 4: Health Profile (#EAF5F0 + Mint Bottle) */}
+          <TouchableOpacity
+            style={[styles.workflowCard, { backgroundColor: '#EAF5F0' }]}
+            onPress={() => navigation.navigate('Profile')}
+            activeOpacity={0.88}
+          >
+            <View style={styles.workflowCardTop}>
+              <Text style={[styles.workflowCardTitle, { color: '#1B7A3D' }]}>
+                Patient{'\n'}Health Record
+              </Text>
+              <View style={styles.workflowDarkArrow}>
+                <Ionicons name="arrow-forward" size={13} color="#FFFFFF" />
+              </View>
+            </View>
+            <Text style={styles.workflowCardSub}>Vitals, Labs & Allergies</Text>
+            <View style={styles.workflowIllusHolder}>
+              <MintBottleIllustration scale={0.95} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </MotionView>
+
+      {/* Regimen Safety Shield Card — Rounded 24px Website Aesthetic */}
+      <MotionView delay={55}>
         {activeAlert ? (
           <View style={styles.alertShieldCard}>
             <View style={styles.alertShieldTop}>
-              <View style={{ flex: 1, marginRight: 10 }}>
-                <Text style={styles.alertEyebrow}>
-                  {activeAlert.severity_tier} INTERACTION DETECTED
-                </Text>
+              <View style={{ flex: 1, marginRight: 12 }}>
+                <View style={styles.criticalPillBadge}>
+                  <Ionicons name="warning" size={11} color="#DC2626" />
+                  <Text style={styles.criticalPillBadgeText}>
+                    {activeAlert.severity_tier} INTERACTION DETECTED
+                  </Text>
+                </View>
                 <Text style={styles.alertComboText}>
                   {activeAlert.combo_str} → {activeAlert.adverse_event}
                 </Text>
@@ -326,10 +354,8 @@ export default function TodayScheduleScreen({ navigation }) {
                 </Text>
               </View>
               {activeAlert.patient_has_matching_symptom && (
-                <View style={[styles.outlinedBadge, { borderColor: '#DC2626' }]}>
-                  <Text style={[styles.outlinedBadgeText, { color: '#DC2626' }]}>
-                    Symptom Correlated
-                  </Text>
+                <View style={styles.symptomBadge}>
+                  <Text style={styles.symptomBadgeText}>Symptom Correlated</Text>
                 </View>
               )}
             </View>
@@ -357,8 +383,8 @@ export default function TodayScheduleScreen({ navigation }) {
         )}
       </MotionView>
 
-      {/* Bklit.UI Daily Adherence & Signal Telemetry */}
-      <MotionView delay={90}>
+      {/* Daily Adherence & Signal Telemetry */}
+      <MotionView delay={85}>
         <BklitRingChart
           title="Daily Regimen & Safety Telemetry"
           metrics={[
@@ -381,7 +407,7 @@ export default function TodayScheduleScreen({ navigation }) {
       </MotionView>
 
       {activeAlerts.length > 0 && (
-        <MotionView delay={120}>
+        <MotionView delay={110}>
           <BklitBarChart
             title="Active Regimen Disproportionality (PRR)"
             items={activeAlerts.map((a) => ({
@@ -394,12 +420,10 @@ export default function TodayScheduleScreen({ navigation }) {
         </MotionView>
       )}
 
-      {/* Section Title */}
+      {/* Section Title: Today's Dosing Schedule */}
       <View style={styles.sectionHeader}>
-        <View>
-          <Text style={styles.sectionEyebrow}>DAILY REGIMEN</Text>
-          <Text style={styles.sectionTitle}>Today's Dosing Schedule</Text>
-        </View>
+        <Text style={styles.sectionEyebrow}>DAILY REGIMEN</Text>
+        <Text style={styles.sectionTitle}>Today's Dosing Schedule</Text>
       </View>
 
       {/* Schedule Slots */}
@@ -407,18 +431,23 @@ export default function TodayScheduleScreen({ navigation }) {
         Object.keys(schedule).map((slotKey, sIdx) => {
           const slot = schedule[slotKey];
           if (!slot || !slot.items || slot.items.length === 0) return null;
-          const borderAccent = slotAccentColors[slotKey] || '#1B7A3D';
+          const theme = slotPastelThemes[slotKey] || slotPastelThemes.morning;
 
           return (
-            <MotionView key={slotKey} delay={140 + sIdx * 40}>
-              <View
-                style={[styles.slotCard, { borderLeftColor: borderAccent, borderLeftWidth: 3 }]}
-              >
+            <MotionView key={slotKey} delay={130 + sIdx * 35}>
+              <View style={styles.slotCard}>
                 <View style={styles.slotHeader}>
-                  <Text style={styles.slotTitle}>{slot.title}</Text>
-                  <Text style={styles.slotCountText}>
-                    {slot.items.length} {slot.items.length === 1 ? 'DOSE' : 'DOSES'}
-                  </Text>
+                  <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+                    <View
+                      style={[styles.slotAccentDot, { backgroundColor: theme.accent }]}
+                    />
+                    <Text style={styles.slotTitle}>{slot.title}</Text>
+                  </View>
+                  <View style={[styles.slotCountBadge, { backgroundColor: theme.bg }]}>
+                    <Text style={[styles.slotCountText, { color: theme.accent }]}>
+                      {slot.items.length} {slot.items.length === 1 ? 'DOSE' : 'DOSES'}
+                    </Text>
+                  </View>
                 </View>
 
                 {slot.items.map((med, idx) => {
@@ -441,7 +470,7 @@ export default function TodayScheduleScreen({ navigation }) {
                       <Ionicons
                         name={isTaken ? 'checkmark-circle' : 'ellipse-outline'}
                         size={22}
-                        color={isTaken ? '#1B7A3D' : '#6B6B6B'}
+                        color={isTaken ? '#1B7A3D' : '#94A3B8'}
                       />
                       <View style={styles.medDetails}>
                         <View style={styles.medPillRow}>
@@ -453,9 +482,21 @@ export default function TodayScheduleScreen({ navigation }) {
                           {med.dose} • {med.instructions}
                         </Text>
                       </View>
-                      <Text style={[styles.statusLabel, isTaken && styles.statusLabelTaken]}>
-                        {isTaken ? 'TAKEN' : 'MARK'}
-                      </Text>
+                      <View
+                        style={[
+                          styles.statusActionPill,
+                          isTaken && styles.statusActionPillTaken,
+                        ]}
+                      >
+                        <Text
+                          style={[
+                            styles.statusLabel,
+                            isTaken && styles.statusLabelTaken,
+                          ]}
+                        >
+                          {isTaken ? 'TAKEN' : 'MARK'}
+                        </Text>
+                      </View>
                     </TouchableOpacity>
                   );
                 })}
@@ -479,6 +520,97 @@ export default function TodayScheduleScreen({ navigation }) {
         </Text>
       </View>
 
+      {/* =========================================================================
+          MOVED TO BOTTOM: MEDICATION DOSE ALARMS & BIOMETRIC LOCK CARD
+          (Fixed header layout so ALARMS ON badge never overlaps text)
+         ========================================================================= */}
+      <MotionView delay={180}>
+        <View style={styles.reminderControlCard}>
+          <View style={styles.reminderHeaderRow}>
+            <View style={styles.reminderTitleColumn}>
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 5 }}>
+                <Ionicons
+                  name={remindersEnabled ? 'alarm-outline' : 'notifications-off-outline'}
+                  size={14}
+                  color="#1B7A3D"
+                />
+                <Text style={styles.reminderEyebrow}>MEDICATION REMINDERS</Text>
+              </View>
+              <Text style={styles.reminderMainHeading}>
+                Daily Dose Alarms ({scheduledReminders.length || 3} Slots)
+              </Text>
+            </View>
+
+            <TouchableOpacity
+              style={[
+                styles.reminderTogglePill,
+                !remindersEnabled && styles.reminderTogglePillPaused,
+              ]}
+              onPress={toggleRemindersEnabled}
+              activeOpacity={0.8}
+            >
+              <View
+                style={[
+                  styles.reminderStatusDot,
+                  !remindersEnabled && { backgroundColor: '#94A3B8' },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.reminderToggleText,
+                  !remindersEnabled && { color: '#475569' },
+                ]}
+              >
+                {remindersEnabled ? 'ALARMS ON' : 'PAUSED'}
+              </Text>
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.alarmPillsRow}>
+            {(scheduledReminders.length > 0
+              ? scheduledReminders
+              : [
+                  { slotKey: 'morning', shortTime: '8:00 AM', medCount: 3 },
+                  { slotKey: 'afternoon', shortTime: '1:00 PM', medCount: 1 },
+                  { slotKey: 'evening', shortTime: '7:00 PM', medCount: 1 },
+                ]
+            ).map((alarm) => (
+              <TouchableOpacity
+                key={alarm.slotKey}
+                style={styles.alarmSlotChip}
+                onPress={() => sendDoseNotificationNow(alarm.slotKey)}
+                activeOpacity={0.8}
+              >
+                <Ionicons name="notifications-outline" size={12} color="#1B7A3D" />
+                <Text style={styles.alarmSlotChipText}>
+                  {alarm.shortTime} ({alarm.medCount} {alarm.medCount === 1 ? 'med' : 'meds'})
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <View style={styles.reminderBtnRow}>
+            <TouchableOpacity
+              style={styles.triggerReminderBtn}
+              onPress={handleSendTestReminder}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="notifications" size={14} color="#FFFFFF" />
+              <Text style={styles.triggerReminderBtnText}>Notify Dose Due Now</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.lockBiometricBtn}
+              onPress={lockSession}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="finger-print" size={14} color="#111827" />
+              <Text style={styles.lockBiometricBtnText}>1-Tap Lock</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </MotionView>
+
       <Footer navigation={navigation} />
     </ScrollView>
   );
@@ -490,7 +622,7 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
   },
   scrollContent: {
-    padding: 20,
+    padding: 16,
     paddingBottom: 44,
     width: '100%',
     maxWidth: 680,
@@ -505,32 +637,72 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 13,
-    color: '#6B6B6B',
+    color: '#64748B',
+  },
+  topEyebrowRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: 10,
+  },
+  engineBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+  },
+  engineBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#3B6EA8',
+    letterSpacing: 0.8,
+  },
+  signalRatioText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#3B6EA8',
   },
   greetingBar: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 18,
+    marginBottom: 16,
+    gap: 10,
+  },
+  greetingLeft: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    flex: 1,
   },
   welcomeText: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 24,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: -0.5,
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#111827',
+    letterSpacing: -0.4,
+  },
+  personaMetaText: {
+    fontSize: 11.5,
+    fontWeight: '600',
+    color: '#3B6EA8',
+    marginTop: 1,
   },
   dateText: {
-    fontSize: 12,
-    color: '#6B6B6B',
-    marginTop: 4,
+    fontSize: 11,
+    color: '#64748B',
+    marginTop: 2,
   },
   scanQuickBtn: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#1A1A1A',
-    paddingVertical: 9,
-    paddingHorizontal: 16,
+    backgroundColor: '#111827',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
     borderRadius: 9999,
     gap: 6,
     flexShrink: 0,
@@ -538,32 +710,76 @@ const styles = StyleSheet.create({
   scanQuickBtnText: {
     color: '#FFFFFF',
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: '700',
+  },
+  workflowGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    rowGap: 10,
+    marginBottom: 18,
+  },
+  workflowCard: {
+    width: '48.5%',
+    borderRadius: 22,
+    padding: 14,
+    minHeight: 146,
+    justifyContent: 'space-between',
+    overflow: 'hidden',
+  },
+  workflowCardTop: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+  },
+  workflowCardTitle: {
+    fontSize: 14,
+    fontWeight: '800',
+    lineHeight: 18,
+  },
+  workflowDarkArrow: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: '#111827',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  workflowCardSub: {
+    fontSize: 10.5,
+    color: '#475569',
+    fontWeight: '500',
+    marginTop: 4,
+  },
+  workflowIllusHolder: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 4,
   },
   errorBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#DC2626',
-    borderLeftWidth: 4,
+    borderColor: '#FECACA',
     padding: 12,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#FEF2F2',
     gap: 10,
   },
   errorBannerTitle: {
     fontSize: 9,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#DC2626',
     letterSpacing: 0.8,
   },
   errorBannerText: {
     fontSize: 12,
-    color: '#1A1A1A',
+    color: '#111827',
     marginTop: 2,
   },
   retryBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111827',
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 9999,
@@ -576,26 +792,27 @@ const styles = StyleSheet.create({
   successBanner: {
     flexDirection: 'row',
     alignItems: 'center',
+    borderRadius: 18,
     borderWidth: 1,
-    borderColor: '#1B7A3D',
-    borderLeftWidth: 4,
+    borderColor: 'rgba(27, 122, 61, 0.3)',
     padding: 12,
     marginBottom: 16,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F0FDF4',
     gap: 8,
   },
   successBannerText: {
     fontSize: 12,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#111827',
     flex: 1,
   },
   alertShieldCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderColor: '#E2E8F0',
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   alertShieldTop: {
     flexDirection: 'row',
@@ -603,17 +820,29 @@ const styles = StyleSheet.create({
     alignItems: 'flex-start',
     marginBottom: 10,
   },
-  alertEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
+  criticalPillBadge: {
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
+    marginBottom: 8,
+  },
+  criticalPillBadgeText: {
+    fontSize: 9.5,
+    fontWeight: '800',
     color: '#DC2626',
-    letterSpacing: 0.8,
-    marginBottom: 6,
+    letterSpacing: 0.6,
   },
   alertComboText: {
     fontSize: 16,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: '#111827',
     lineHeight: 22,
   },
   statBlock: {
@@ -621,22 +850,21 @@ const styles = StyleSheet.create({
     flexShrink: 0,
   },
   statHeroNum: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 30,
+    fontSize: 28,
     fontWeight: '900',
-    color: '#1A1A1A',
-    lineHeight: 32,
+    color: '#111827',
+    lineHeight: 30,
   },
   statHeroLabel: {
     fontSize: 9,
     fontWeight: '700',
-    color: '#6B6B6B',
+    color: '#64748B',
     letterSpacing: 0.8,
     marginTop: 2,
   },
   alertAdviceText: {
     fontSize: 13,
-    color: '#6B6B6B',
+    color: '#475569',
     lineHeight: 19,
     marginBottom: 14,
   },
@@ -647,21 +875,35 @@ const styles = StyleSheet.create({
     marginBottom: 14,
   },
   outlinedBadge: {
+    backgroundColor: '#F8FAFC',
     borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderColor: '#E2E8F0',
     borderRadius: 9999,
-    paddingVertical: 3,
-    paddingHorizontal: 10,
+    paddingVertical: 4,
+    paddingHorizontal: 11,
   },
   outlinedBadgeText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#111827',
+  },
+  symptomBadge: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 9999,
+    paddingVertical: 4,
+    paddingHorizontal: 11,
+  },
+  symptomBadgeText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#DC2626',
   },
   inspectSafetyBtn: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111827',
     borderRadius: 9999,
-    paddingVertical: 10,
+    paddingVertical: 11,
     paddingHorizontal: 16,
     flexDirection: 'row',
     alignItems: 'center',
@@ -674,81 +916,90 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   safeShieldCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#EAF5F0',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    borderLeftWidth: 3,
-    borderLeftColor: '#1B7A3D',
+    borderColor: '#A7F3D0',
     padding: 18,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   safeEyebrow: {
     fontSize: 10,
-    fontWeight: '700',
+    fontWeight: '800',
     color: '#1B7A3D',
     letterSpacing: 0.8,
     marginBottom: 4,
   },
   safeShieldTitle: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 6,
   },
   safeShieldBody: {
     fontSize: 13,
-    color: '#6B6B6B',
+    color: '#334155',
     lineHeight: 19,
   },
   sectionHeader: {
-    marginBottom: 14,
+    marginBottom: 12,
+    marginTop: 4,
   },
   sectionEyebrow: {
     fontSize: 10,
     fontWeight: '700',
-    color: '#6B6B6B',
-    letterSpacing: 0.8,
-    marginBottom: 4,
+    color: '#94A3B8',
+    letterSpacing: 0.9,
+    marginBottom: 3,
   },
   sectionTitle: {
     fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontWeight: '800',
+    color: '#111827',
   },
   slotCard: {
     backgroundColor: '#FFFFFF',
+    borderRadius: 22,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
+    borderColor: '#E2E8F0',
     padding: 16,
-    marginBottom: 16,
+    marginBottom: 14,
   },
   slotHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
     borderBottomWidth: 1,
-    borderBottomColor: '#E5E5E0',
+    borderBottomColor: '#F1F5F9',
     paddingBottom: 10,
     marginBottom: 6,
   },
+  slotAccentDot: {
+    width: 9,
+    height: 9,
+    borderRadius: 4.5,
+  },
   slotTitle: {
-    fontSize: 13,
+    fontSize: 13.5,
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
+  },
+  slotCountBadge: {
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    borderRadius: 999,
   },
   slotCountText: {
     fontSize: 10,
-    color: '#6B6B6B',
-    fontWeight: '700',
-    letterSpacing: 0.6,
+    fontWeight: '800',
+    letterSpacing: 0.5,
   },
   medItem: {
     flexDirection: 'row',
     alignItems: 'center',
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#F5F5F0',
+    borderBottomColor: '#F8FAFC',
   },
   medItemTaken: {
     opacity: 0.55,
@@ -764,7 +1015,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   blackDrugPill: {
-    backgroundColor: '#1A1A1A',
+    backgroundColor: '#111827',
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: 9999,
@@ -776,39 +1027,54 @@ const styles = StyleSheet.create({
   },
   medInstructions: {
     fontSize: 12,
-    color: '#6B6B6B',
+    color: '#64748B',
+  },
+  statusActionPill: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 999,
+    flexShrink: 0,
+  },
+  statusActionPillTaken: {
+    backgroundColor: '#F0FDF4',
+    borderColor: '#BBF7D0',
   },
   statusLabel: {
     fontSize: 10,
-    fontWeight: '700',
-    letterSpacing: 0.6,
-    color: '#6B6B6B',
-    flexShrink: 0,
+    fontWeight: '800',
+    letterSpacing: 0.5,
+    color: '#475569',
   },
   statusLabelTaken: {
     color: '#1B7A3D',
   },
   infoStrip: {
-    borderTopWidth: 1,
-    borderTopColor: '#E5E5E0',
-    paddingTop: 20,
-    marginTop: 12,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginTop: 6,
+    marginBottom: 16,
   },
   infoLine: {
-    fontSize: 13,
-    color: '#6B6B6B',
-    lineHeight: 20,
+    fontSize: 12.5,
+    color: '#475569',
+    lineHeight: 19,
     marginTop: 4,
   },
   infoLabel: {
     fontWeight: '700',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   doseDueNotificationCard: {
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#F0FDF4',
+    borderRadius: 22,
     borderWidth: 1.5,
-    borderColor: '#1B7A3D',
-    borderLeftWidth: 5,
+    borderColor: 'rgba(27, 122, 61, 0.45)',
     padding: 16,
     marginBottom: 16,
   },
@@ -830,20 +1096,19 @@ const styles = StyleSheet.create({
   doseDueBadgeText: {
     color: '#FFFFFF',
     fontSize: 9,
-    fontWeight: '700',
-    letterSpacing: 0.7,
+    fontWeight: '800',
+    letterSpacing: 0.6,
   },
   doseDueTitle: {
-    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 18,
-    fontWeight: '700',
-    color: '#1A1A1A',
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#111827',
     marginBottom: 4,
   },
   doseDueBody: {
-    fontSize: 13,
-    color: '#1A1A1A',
-    lineHeight: 19,
+    fontSize: 12.5,
+    color: '#334155',
+    lineHeight: 18,
     marginBottom: 12,
   },
   doseDueActionRow: {
@@ -873,47 +1138,70 @@ const styles = StyleSheet.create({
     gap: 5,
     backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
+    borderColor: '#CBD5E1',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 9999,
   },
   doseDueSnoozeText: {
-    color: '#1A1A1A',
+    color: '#111827',
     fontSize: 12,
     fontWeight: '700',
   },
   reminderControlCard: {
-    backgroundColor: '#FFFFFF',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    padding: 14,
-    marginBottom: 18,
+    borderColor: '#E2E8F0',
+    padding: 16,
+    marginBottom: 8,
   },
   reminderHeaderRow: {
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     justifyContent: 'space-between',
-    marginBottom: 10,
+    gap: 12,
+    marginBottom: 12,
+  },
+  reminderTitleColumn: {
+    flex: 1,
+    paddingRight: 8,
   },
   reminderEyebrow: {
-    fontSize: 10,
-    fontWeight: '700',
-    color: '#1A1A1A',
-    letterSpacing: 0.7,
+    fontSize: 9.5,
+    fontWeight: '800',
+    color: '#1B7A3D',
+    letterSpacing: 0.8,
+  },
+  reminderMainHeading: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#111827',
+    marginTop: 2,
   },
   reminderTogglePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
     backgroundColor: '#1B7A3D',
-    borderWidth: 1,
-    borderColor: '#1B7A3D',
-    paddingHorizontal: 9,
-    paddingVertical: 3,
+    paddingHorizontal: 10,
+    paddingVertical: 5,
     borderRadius: 9999,
+    flexShrink: 0,
+  },
+  reminderTogglePillPaused: {
+    backgroundColor: '#E2E8F0',
+  },
+  reminderStatusDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: '#FFFFFF',
   },
   reminderToggleText: {
     color: '#FFFFFF',
-    fontSize: 9,
-    fontWeight: '700',
+    fontSize: 9.5,
+    fontWeight: '800',
     letterSpacing: 0.6,
   },
   alarmPillsRow: {
@@ -925,18 +1213,18 @@ const styles = StyleSheet.create({
   alarmSlotChip: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 4,
-    backgroundColor: '#F5F5F0',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E5E5E0',
-    paddingHorizontal: 9,
+    borderColor: '#E2E8F0',
+    paddingHorizontal: 10,
     paddingVertical: 5,
     borderRadius: 9999,
   },
   alarmSlotChipText: {
     fontSize: 11,
     fontWeight: '600',
-    color: '#1A1A1A',
+    color: '#111827',
   },
   reminderBtnRow: {
     flexDirection: 'row',
@@ -949,13 +1237,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 6,
-    backgroundColor: '#1A1A1A',
-    paddingVertical: 10,
+    backgroundColor: '#111827',
+    paddingVertical: 11,
     borderRadius: 9999,
   },
   triggerReminderBtnText: {
     color: '#FFFFFF',
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
   },
   lockBiometricBtn: {
@@ -963,16 +1251,16 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    backgroundColor: '#F5F5F0',
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#1A1A1A',
-    paddingVertical: 9,
-    paddingHorizontal: 12,
+    borderColor: '#CBD5E1',
+    paddingVertical: 10,
+    paddingHorizontal: 14,
     borderRadius: 9999,
   },
   lockBiometricBtnText: {
-    color: '#1A1A1A',
-    fontSize: 11,
+    color: '#111827',
+    fontSize: 11.5,
     fontWeight: '700',
   },
 });

@@ -314,7 +314,7 @@ export default function LadipWorkspace() {
   // Supabase Auth, Biometric Quick-Unlock & Medication Dose Reminder State
   const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
   const [authUsername, setAuthUsername] = useState<string>("ramesh");
-  const [authPassword, setAuthPassword] = useState<string>("ramesh1234");
+  const [authPassword, setAuthPassword] = useState<string>("");
   const [authError, setAuthError] = useState<string | null>(null);
   const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
   const [savedWebSession, setSavedWebSession] =
@@ -1359,7 +1359,7 @@ export default function LadipWorkspace() {
                         setAuthPassword(e.target.value);
                         setAuthError(null);
                       }}
-                      placeholder="ramesh1234"
+                      placeholder="Enter your password"
                       className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium text-[#111827] focus:outline-none focus:border-[#111827]"
                     />
                   </div>
@@ -1386,7 +1386,7 @@ export default function LadipWorkspace() {
 
                 <div className="pt-2 border-t border-slate-100">
                   <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
-                    Quick Cohort Credentials (Click to Fill)
+                    Select Patient Cohort Account
                   </div>
                   <div className="flex flex-wrap gap-1.5">
                     {Object.values(PATIENT_AUTH_ACCOUNTS).map((acc) => (
@@ -1395,12 +1395,23 @@ export default function LadipWorkspace() {
                         type="button"
                         onClick={() => {
                           setAuthUsername(acc.username);
-                          setAuthPassword(acc.password);
                           setAuthError(null);
                         }}
-                        className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-[11px] font-mono text-[#111827] transition-colors"
+                        className={`px-2.5 py-1 rounded-full text-[11px] font-medium transition-colors inline-flex items-center gap-1.5 ${
+                          authUsername.toLowerCase() === acc.username
+                            ? "bg-[#111827] text-white"
+                            : "bg-slate-100 hover:bg-slate-200 text-[#111827]"
+                        }`}
                       >
-                        {acc.username} / {acc.password}
+                        <PatientCohortAvatar
+                          patientId={acc.patientId}
+                          size="xs"
+                          showStatusBadge={false}
+                        />
+                        <span>{acc.shortName}</span>
+                        <span className="font-mono text-[10px] opacity-75">
+                          @{acc.username}
+                        </span>
                       </button>
                     ))}
                   </div>
