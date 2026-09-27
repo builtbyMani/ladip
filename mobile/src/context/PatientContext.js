@@ -20,6 +20,7 @@ import {
   clearSavedPatientSession,
   configureSupabaseCredentials,
   getSupabaseConfigStatus,
+  getSupabaseStatus,
 } from '../lib/supabase';
 import {
   getBiometricHardwareStatus,
@@ -42,7 +43,17 @@ export function PatientProvider({ children }) {
     isAvailable: true,
     biometricLabel: 'Fingerprint / Face ID',
   });
-  const [supabaseStatus, setSupabaseStatus] = useState(getSupabaseConfigStatus());
+  const [supabaseStatus, setSupabaseStatus] = useState(() => {
+    const fn = getSupabaseConfigStatus || getSupabaseStatus;
+    return typeof fn === 'function'
+      ? fn()
+      : {
+          isConfigured: false,
+          isCloudConfigured: false,
+          url: 'https://ladip-clinical-auth.supabase.co',
+          mode: 'SUPABASE_SECURESTORE_HYBRID',
+        };
+  });
 
   const [patients, setPatients] = useState([]);
   const [currentPatientId, setCurrentPatientId] = useState('PT_BLEED_001'); // Default: Ramesh Sharma

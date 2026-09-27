@@ -130,7 +130,7 @@ export async function configureSupabaseCredentials(url, anonKey) {
     currentSupabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
     currentSupabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
     supabaseClient = buildSupabaseClient(currentSupabaseUrl, currentSupabaseAnonKey);
-    return { isConfigured: Boolean(supabaseClient), url: currentSupabaseUrl };
+    return getSupabaseConfigStatus();
   }
 
   await ExpoSecureStoreAdapter.setItem(SECURE_SUPABASE_URL_KEY, cleanUrl);
@@ -138,16 +138,20 @@ export async function configureSupabaseCredentials(url, anonKey) {
   currentSupabaseUrl = cleanUrl;
   currentSupabaseAnonKey = cleanKey;
   supabaseClient = buildSupabaseClient(cleanUrl, cleanKey);
-  return { isConfigured: Boolean(supabaseClient), url: currentSupabaseUrl };
+  return getSupabaseConfigStatus();
 }
 
-export function getSupabaseStatus() {
+export function getSupabaseConfigStatus() {
+  const isCloudConfigured = Boolean(supabaseClient);
   return {
-    isConfigured: Boolean(supabaseClient),
+    isConfigured: isCloudConfigured,
+    isCloudConfigured,
     url: currentSupabaseUrl || 'https://ladip-clinical-auth.supabase.co',
-    mode: supabaseClient ? 'LIVE_SUPABASE_CLOUD' : 'SUPABASE_SECURESTORE_HYBRID',
+    mode: isCloudConfigured ? 'LIVE_SUPABASE_CLOUD' : 'SUPABASE_SECURESTORE_HYBRID',
   };
 }
+
+export const getSupabaseStatus = getSupabaseConfigStatus;
 
 /**
  * Convert short patient username (e.g., "ramesh") into canonical email ("ramesh@ladip.health")
@@ -248,6 +252,8 @@ export async function authenticateWithSupabase(usernameOrEmail, password) {
 
         return {
           success: true,
+          patientId: resolvedPersona.patientId,
+          authProvider: sessionRecord.authProvider,
           persona: resolvedPersona,
           session: sessionRecord,
         };
@@ -295,6 +301,8 @@ export async function authenticateWithSupabase(usernameOrEmail, password) {
 
   return {
     success: true,
+    patientId: matchedPersona.patientId,
+    authProvider: sessionRecord.authProvider,
     persona: matchedPersona,
     session: sessionRecord,
   };
