@@ -65,20 +65,58 @@ export default function TodayScheduleScreen({ navigation }) {
   const highAlert = activeAlerts.find((a) => a.severity_tier === 'HIGH');
   const activeAlert = criticalAlert || highAlert;
 
-  // Build normalized set of interacting medication names from activeAlerts
+  // Identify ONLY the primary ADR-causing / culprit medication from the active clinical alert
+  // (e.g., Simvastatin 40 mg in "Cap Simvastatin dose...", Ibuprofen in "Discontinue Ibuprofen...")
   const interactingDrugSet = new Set();
-  activeAlerts.forEach((alert) => {
-    if (Array.isArray(alert.drug_combo)) {
-      alert.drug_combo.forEach((d) => {
-        if (d) interactingDrugSet.add(String(d).trim().toLowerCase());
+  if (activeAlert) {
+    const recText = String(activeAlert.recommendation || '').toLowerCase();
+    const candidateDrugs = [];
+    if (Array.isArray(activeAlert.combo_drugs)) {
+      activeAlert.combo_drugs.forEach((d) => {
+        if (d) candidateDrugs.push(String(d).trim().toLowerCase());
       });
     }
-    if (alert.combo_str) {
-      alert.combo_str.split('+').forEach((d) => {
-        if (d) interactingDrugSet.add(String(d).trim().toLowerCase());
+    if (Array.isArray(activeAlert.drug_combo)) {
+      activeAlert.drug_combo.forEach((d) => {
+        if (d) candidateDrugs.push(String(d).trim().toLowerCase());
       });
     }
-  });
+    if (activeAlert.combo_str) {
+      activeAlert.combo_str.split('+').forEach((d) => {
+        if (d) candidateDrugs.push(String(d).trim().toLowerCase());
+      });
+    }
+
+    // 1. Check direct clinical action verb target in recommendation (cap / discontinue / stop / switch from / avoid)
+    const actionMatch = recText.match(
+      /(?:cap|discontinue|stop|switch\s+(?:ppi\s+)?from|avoid)\s+([a-z0-9-]+)/i
+    );
+    const actionTarget = actionMatch?.[1]?.toLowerCase();
+
+    if (actionTarget) {
+      if (
+        actionTarget === 'co-trimoxazole' ||
+        actionTarget === 'bactrim' ||
+        actionTarget.includes('trimethoprim')
+      ) {
+        interactingDrugSet.add('bactrim');
+        interactingDrugSet.add('trimethoprim');
+        interactingDrugSet.add('trimethoprim-sulfamethoxazole');
+      } else {
+        interactingDrugSet.add(actionTarget);
+      }
+    } else {
+      // 2. Otherwise pick the single candidate drug mentioned in the recommendation, or fallback to trigger_drug
+      const mentionedCandidate = candidateDrugs.find((d) => d && recText.includes(d));
+      if (mentionedCandidate) {
+        interactingDrugSet.add(mentionedCandidate);
+      } else if (activeAlert.trigger_drug) {
+        interactingDrugSet.add(String(activeAlert.trigger_drug).trim().toLowerCase());
+      } else if (candidateDrugs.length > 0) {
+        interactingDrugSet.add(candidateDrugs[candidateDrugs.length - 1]);
+      }
+    }
+  }
 
   // Compute total daily doses and adherence %
   let totalDoses = 0;
@@ -352,8 +390,13 @@ export default function TodayScheduleScreen({ navigation }) {
                   const normalizedDrugName = String(med.drug_name || '')
                     .trim()
                     .toLowerCase();
+                  const normalizedGenericName = String(med.normalized_name || '')
+                    .trim()
+                    .toLowerCase();
                   const isInteractingDrug =
-                    Boolean(activeAlert) && interactingDrugSet.has(normalizedDrugName);
+                    Boolean(activeAlert) &&
+                    (interactingDrugSet.has(normalizedDrugName) ||
+                      (normalizedGenericName && interactingDrugSet.has(normalizedGenericName)));
 
                   return (
                     <TouchableOpacity
