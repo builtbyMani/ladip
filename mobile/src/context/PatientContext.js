@@ -1,6 +1,7 @@
 /**
  * PatientContext
- * Manages active patient state, patient switching for demo, alerts, and live refresh.
+ * Manages patient authentication (e.g., ramesh / ramesh1234), active patient state,
+ * patient switching, alerts, and live refresh.
  */
 import React, { createContext, useState, useEffect, useContext } from 'react';
 import {
@@ -9,10 +10,13 @@ import {
   fetchSchedule,
   fetchAlerts,
 } from '../api/client';
+import { PATIENT_PERSONA_META, getPatientPersona } from '../components/PatientAvatar';
 
 const PatientContext = createContext();
 
 export function PatientProvider({ children }) {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [authenticatedUser, setAuthenticatedUser] = useState(null);
   const [patients, setPatients] = useState([]);
   const [currentPatientId, setCurrentPatientId] = useState('PT_BLEED_001'); // Default: Ramesh Sharma
   const [profile, setProfile] = useState(null);
@@ -20,7 +24,7 @@ export function PatientProvider({ children }) {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [takenMeds, setTakenMeds] = useState({}); // Tracking taken doses
+  const [takenMeds, setTakenMeds] = useState({});
 
   // Load all patients list
   const loadPatients = async () => {
@@ -64,6 +68,45 @@ export function PatientProvider({ children }) {
     }
   }, [currentPatientId]);
 
+  const login = (username, password) => {
+    const cleanUser = (username || '').trim().toLowerCase();
+    const cleanPass = (password || '').trim();
+
+    if (!cleanUser || !cleanPass) {
+      return {
+        success: false,
+        error: 'Please enter both username and password (e.g., ramesh / ramesh1234).',
+      };
+    }
+
+    const matchedPersona = Object.values(PATIENT_PERSONA_META).find(
+      (p) => p.username.toLowerCase() === cleanUser && p.password === cleanPass
+    );
+
+    if (!matchedPersona) {
+      return {
+        success: false,
+        error:
+          'Invalid credentials. For Ramesh Sharma, use username "ramesh" and password "ramesh1234".',
+      };
+    }
+
+    setCurrentPatientId(matchedPersona.patientId);
+    setAuthenticatedUser(matchedPersona);
+    setIsAuthenticated(true);
+    setTakenMeds({});
+    return {
+      success: true,
+      patientId: matchedPersona.patientId,
+      name: matchedPersona.shortName,
+    };
+  };
+
+  const logout = () => {
+    setIsAuthenticated(false);
+    setAuthenticatedUser(null);
+  };
+
   const toggleMedTaken = (key) => {
     setTakenMeds((prev) => ({
       ...prev,
@@ -73,6 +116,7 @@ export function PatientProvider({ children }) {
 
   const switchPatient = (pid) => {
     setCurrentPatientId(pid);
+    setAuthenticatedUser(getPatientPersona(pid));
     setTakenMeds({});
   };
 
@@ -85,6 +129,10 @@ export function PatientProvider({ children }) {
   return (
     <PatientContext.Provider
       value={{
+        isAuthenticated,
+        authenticatedUser,
+        login,
+        logout,
         patients,
         currentPatientId,
         profile,

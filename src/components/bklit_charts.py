@@ -353,7 +353,7 @@ function escapeHtml(str) {
 function attachTooltip(container, tooltipEl) {
   const targets = container.querySelectorAll("[data-tt-title]");
   const populateTooltip = (el) => {
-    const eyebrow = el.getAttribute("data-tt-eyebrow") || "BKLIT.UI SIGNAL";
+    const eyebrow = el.getAttribute("data-tt-eyebrow") || "SIGNAL INSPECTOR";
     const title = el.getAttribute("data-tt-title") || "";
     const rowsRaw = el.getAttribute("data-tt-rows") || "[]";
     let rows = [];
@@ -523,7 +523,7 @@ function renderTimeline(root, data) {
     <div class="bklit-card">
       <div class="bklit-header">
         <div>
-          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "BKLIT.UI CHRONOLOGY ENGINE • MOTION.DEV")}</div>
+          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "LONGITUDINAL CHRONOLOGY")}</div>
           <h4 class="bklit-title">${escapeHtml(data.title || "Medication Overlap & Adverse Event Timeline")}</h4>
           ${data.subtitle ? `<p class="bklit-subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
         </div>
@@ -570,7 +570,7 @@ function renderRingGauge(root, data) {
       return `
         <div
           class="bklit-ring-cell bklit-ring-interactive"
-          data-tt-eyebrow="BKLIT.UI RING METRIC"
+          data-tt-eyebrow="TELEMETRY INSPECTOR"
           data-tt-title="${escapeHtml(m.label || "")}"
           data-tt-rows="${escapeHtml(ttRows)}"
         >
@@ -602,7 +602,7 @@ function renderRingGauge(root, data) {
     <div class="bklit-card">
       <div class="bklit-header">
         <div>
-          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "BKLIT.UI RADIAL TELEMETRY • MOTION.DEV")}</div>
+          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "CLINICAL TELEMETRY")}</div>
           <h4 class="bklit-title">${escapeHtml(data.title || "Longitudinal Signal & Suppression Telemetry")}</h4>
           ${data.subtitle ? `<p class="bklit-subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
         </div>
@@ -701,7 +701,7 @@ function renderHorizontalBar(root, data) {
             fill="${fill}"
             stroke="#1A1A1A"
             stroke-width="1"
-            data-tt-eyebrow="BKLIT.UI PRR BAR"
+            data-tt-eyebrow="SIGNAL INSPECTOR"
             data-tt-title="${escapeHtml(label)}"
             data-tt-rows="${escapeHtml(ttRows)}"
           />
@@ -715,7 +715,7 @@ function renderHorizontalBar(root, data) {
     <div class="bklit-card">
       <div class="bklit-header">
         <div>
-          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "BKLIT.UI BAR COMPARISON • MOTION.DEV")}</div>
+          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "DISPROPORTIONALITY METRICS")}</div>
           <h4 class="bklit-title">${escapeHtml(data.title || "Proportional Reporting Ratio (PRR)")}</h4>
           ${data.subtitle ? `<p class="bklit-subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
         </div>
@@ -824,7 +824,7 @@ function renderVolcano(root, data) {
           fill-opacity="0.82"
           stroke="#1A1A1A"
           stroke-width="1.2"
-          data-tt-eyebrow="BKLIT.UI VOLCANO SIGNAL"
+          data-tt-eyebrow="VOLCANO SIGNAL"
           data-tt-title="${escapeHtml(pt.label || "")}"
           data-tt-rows="${escapeHtml(ttRows)}"
         />
@@ -836,7 +836,7 @@ function renderVolcano(root, data) {
     <div class="bklit-card">
       <div class="bklit-header">
         <div>
-          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "BKLIT.UI VOLCANO MATRIX • MOTION.DEV")}</div>
+          <div class="bklit-eyebrow">${escapeHtml(data.eyebrow || "SIGNAL VOLCANO MATRIX")}</div>
           <h4 class="bklit-title">${escapeHtml(data.title || "Disproportionality Volcano Plot (PRR vs χ²)")}</h4>
           ${data.subtitle ? `<p class="bklit-subtitle">${escapeHtml(data.subtitle)}</p>` : ""}
         </div>
@@ -918,12 +918,12 @@ def bklit_timeline_chart(
     rows: list[dict[str, Any]],
     *,
     title: str = "Medication Overlap & Adverse Event Timeline",
-    subtitle: str = "Hover any Bklit interval bar to inspect dosage, duration, and temporal overlap.",
-    eyebrow: str = "BKLIT.UI CHRONOLOGY ENGINE • MOTION.DEV",
+    subtitle: str = "Hover any interval bar to inspect dosage, duration, and temporal overlap.",
+    eyebrow: str = "LONGITUDINAL CHRONOLOGY",
     key: str | None = None,
     on_select_change: Callable[[], None] | None = None,
 ):
-    """Render a composable Bklit UI longitudinal regimen & adverse event timeline chart."""
+    """Render a composable longitudinal regimen & adverse event timeline chart."""
     normalized_rows = [
         {
             "track": r.get("Track") or r.get("track") or "Medication Regimen",
@@ -951,11 +951,11 @@ def bklit_ring_gauge_chart(
     metrics: list[dict[str, Any]],
     *,
     title: str = "Clinical Signal & Fatigue Suppression Telemetry",
-    subtitle: str = "Composable Bklit UI radial gauges animated with motion.dev spring physics.",
-    eyebrow: str = "BKLIT.UI RADIAL TELEMETRY • MOTION.DEV",
+    subtitle: str = "Radial telemetry gauges across priority, temporal plausibility, and fatigue suppression.",
+    eyebrow: str = "CLINICAL TELEMETRY",
     key: str | None = None,
 ):
-    """Render a composable Bklit UI multi-ring radial gauge telemetry card."""
+    """Render a composable multi-ring radial gauge telemetry card."""
     return _mount_bklit_component(
         data={
             "variant": "ring",
@@ -974,10 +974,10 @@ def bklit_bar_chart(
     threshold: float = 2.0,
     title: str = "Proportional Reporting Ratio (PRR) Comparison",
     subtitle: str = "Empirical FAERS disproportionality relative to Evans' 2.0x signal threshold.",
-    eyebrow: str = "BKLIT.UI BAR COMPARISON • MOTION.DEV",
+    eyebrow: str = "DISPROPORTIONALITY METRICS",
     key: str | None = None,
 ):
-    """Render a composable Bklit UI horizontal bar chart with threshold line."""
+    """Render a composable horizontal bar chart with threshold line."""
     return _mount_bklit_component(
         data={
             "variant": "bar",
@@ -998,10 +998,10 @@ def bklit_volcano_chart(
     y_threshold: float = 4.0,
     title: str = "Disproportionality Volcano Matrix (PRR vs χ²)",
     subtitle: str = "Bubble area scaled by FAERS co-report volume; dashed lines mark Evans' criteria.",
-    eyebrow: str = "BKLIT.UI VOLCANO MATRIX • MOTION.DEV",
+    eyebrow: str = "SIGNAL VOLCANO MATRIX",
     key: str | None = None,
 ):
-    """Render a composable Bklit UI volcano scatter chart."""
+    """Render a composable volcano scatter chart."""
     return _mount_bklit_component(
         data={
             "variant": "volcano",

@@ -5,6 +5,7 @@
  */
 import Constants from 'expo-constants';
 import { NativeModules, Platform } from 'react-native';
+import { resolveMedicineInput } from '../utils/medicineResolver';
 
 // Auto-discover the host computer's local Wi-Fi IP address from the Metro bundler
 const detectDevHost = () => {
@@ -426,6 +427,9 @@ export async function fetchAlerts(patientId, includeSuppressed = false) {
 }
 
 export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg') {
+  const resolved = resolveMedicineInput(drugName, dose);
+  const effectiveDose = parseFloat(dose) || parseFloat(resolved?.dosageMg) || 0;
+
   try {
     const res = await fetchWithTimeout(
       `${API_BASE_URL}/api/v1/patients/${patientId}/check-drug`,
@@ -434,31 +438,65 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           drug_name: drugName,
-          dose: parseFloat(dose) || 0,
+          dose: effectiveDose,
           dose_unit: doseUnit,
         }),
       },
       3000
     );
     if (res.ok) {
-      return await res.json();
+      const apiData = await res.json();
+      return {
+        ...apiData,
+        medicinal_name: apiData.medicinal_name || resolved?.medicinalName || apiData.normalized_ingredient,
+        resolved_dose_mg: apiData.resolved_dose_mg || effectiveDose,
+        resolved_dose_unit: apiData.resolved_dose_unit || doseUnit,
+        indication: apiData.indication || resolved?.indication || 'Active Pharmaceutical Ingredient',
+      };
     }
   } catch (err) {
     console.warn(`[LADIP API] Evaluating prospective check locally for ${drugName}`);
   }
 
   // Clinical Rule Evaluation Fallback
-  const drugLower = drugName.toLowerCase().trim();
-  const isIbuprofen = drugLower.includes('ibu') || drugLower.includes('combiflam') || drugLower.includes('advil');
-  const isAmiodarone = drugLower.includes('amiodarone') || drugLower.includes('cordarone');
-  const isBactrim = drugLower.includes('bactrim') || drugLower.includes('septra') || drugLower.includes('trimethoprim');
-  const isParacetamol = drugLower.includes('paracetamol') || drugLower.includes('crocin') || drugLower.includes('calpol');
+  const drugLower = (drugName || '').toLowerCase().trim();
+  const normIng = resolved?.normalizedIngredient || drugLower;
+  const medicinalName = resolved?.medicinalName || drugName;
+  const indication = resolved?.indication || 'Clinical Pharmacovigilance Evaluation';
+
+  const isIbuprofen =
+    normIng === 'ibuprofen' ||
+    drugLower.includes('ibu') ||
+    drugLower.includes('brufen') ||
+    drugLower.includes('combiflam') ||
+    drugLower.includes('advil') ||
+    drugLower.includes('voveran') ||
+    drugLower.includes('zerodol');
+  const isAmiodarone =
+    normIng === 'amiodarone' || drugLower.includes('amiodarone') || drugLower.includes('cordarone');
+  const isBactrim =
+    normIng === 'trimethoprim-sulfamethoxazole' ||
+    drugLower.includes('bactrim') ||
+    drugLower.includes('septra') ||
+    drugLower.includes('trimethoprim');
+  const isParacetamol =
+    normIng === 'acetaminophen' ||
+    drugLower.includes('dolo') ||
+    drugLower.includes('paracetamol') ||
+    drugLower.includes('crocin') ||
+    drugLower.includes('calpol');
+  const isPantoprazole =
+    normIng === 'pantoprazole' || drugLower.includes('pan') || drugLower.includes('pantocid');
 
   if (patientId === 'PT_BLEED_001' && isIbuprofen) {
     return {
       patient_id: patientId,
       new_drug: drugName,
       normalized_ingredient: 'ibuprofen',
+      medicinal_name: medicinalName,
+      resolved_dose_mg: effectiveDose || 400,
+      resolved_dose_unit: doseUnit,
+      indication,
       safety_status: 'CRITICAL_CONTRAINDICATION',
       recommendation:
         'DO NOT PRESCRIBE: Severe risk of fatal gastrointestinal hemorrhage when combined with active Warfarin and Aspirin therapy.',
@@ -482,6 +520,10 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
       patient_id: patientId,
       new_drug: drugName,
       normalized_ingredient: 'amiodarone',
+      medicinal_name: medicinalName,
+      resolved_dose_mg: effectiveDose || 200,
+      resolved_dose_unit: doseUnit,
+      indication,
       safety_status: 'CRITICAL_CONTRAINDICATION',
       recommendation:
         'CONTRAINDICATED: Potent CYP3A4 / CYP2C9 inhibition dramatically elevates Simvastatin or Warfarin systemic exposure, risking acute rhabdomyolysis or severe hemorrhage.',
@@ -504,7 +546,11 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
     return {
       patient_id: patientId,
       new_drug: drugName,
-      normalized_ingredient: 'trimethoprim',
+      normalized_ingredient: 'trimethoprim-sulfamethoxazole',
+      medicinal_name: medicinalName,
+      resolved_dose_mg: effectiveDose || 800,
+      resolved_dose_unit: doseUnit,
+      indication,
       safety_status: 'CRITICAL_CONTRAINDICATION',
       recommendation:
         'CONTRAINDICATED: Patient has documented Sulfa allergy and concurrent Methotrexate therapy, risking lethal bone marrow suppression.',
@@ -523,14 +569,19 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
     };
   }
 
-  if (isParacetamol) {
+  if (isParacetamol || isPantoprazole) {
     return {
       patient_id: patientId,
       new_drug: drugName,
-      normalized_ingredient: 'paracetamol',
+      normalized_ingredient: isParacetamol ? 'acetaminophen' : 'pantoprazole',
+      medicinal_name: medicinalName,
+      resolved_dose_mg: effectiveDose || (isParacetamol ? 650 : 40),
+      resolved_dose_unit: doseUnit,
+      indication,
       safety_status: 'LOW_RISK_COMPATIBLE',
-      recommendation:
-        'COMPATIBLE: Paracetamol does not cause significant platelet or gastric mucosa disruption at therapeutic doses (≤2000mg/day).',
+      recommendation: isParacetamol
+        ? 'COMPATIBLE: Paracetamol (Acetaminophen) does not cause significant platelet or gastric mucosa disruption at therapeutic doses (≤2000 mg/day).'
+        : 'COMPATIBLE: Pantoprazole provides gastroprotective acid suppression without inhibiting CYP2C19 or anticoagulation pathways.',
       allergy_warnings: [],
       vulnerability_warnings: [],
       flagged_interactions: [],
@@ -540,9 +591,13 @@ export async function checkNewDrug(patientId, drugName, dose = 0, doseUnit = 'mg
   return {
     patient_id: patientId,
     new_drug: drugName,
-    normalized_ingredient: drugLower,
+    normalized_ingredient: normIng,
+    medicinal_name: medicinalName,
+    resolved_dose_mg: effectiveDose || 500,
+    resolved_dose_unit: doseUnit,
+    indication,
     safety_status: 'MODERATE_RISK',
-    recommendation: `Caution advised: Monitor patient clinical vitals and symptom response following initiation of ${drugName}.`,
+    recommendation: `Caution advised: Monitor patient clinical vitals and symptom response following initiation of ${medicinalName} (${effectiveDose || 500} ${doseUnit}).`,
     allergy_warnings: [],
     vulnerability_warnings: [],
     flagged_interactions: [],

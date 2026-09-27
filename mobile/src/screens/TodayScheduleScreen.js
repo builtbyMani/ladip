@@ -15,11 +15,13 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import MotionView from '../components/MotionView';
+import PatientAvatar from '../components/PatientAvatar';
 import { BklitBarChart, BklitRingChart } from '../components/BklitChart';
 import Footer from '../components/Footer';
 
 export default function TodayScheduleScreen({ navigation }) {
   const {
+    currentPatientId,
     profile,
     schedule,
     alerts,
@@ -88,18 +90,25 @@ export default function TodayScheduleScreen({ navigation }) {
       {/* Editorial Greeting & Quick Action */}
       <MotionView delay={10}>
         <View style={styles.greetingBar}>
-          <View style={{ flex: 1, marginRight: 12 }}>
-            <Text style={styles.welcomeText}>
-              Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Patient'}
-            </Text>
-            <Text style={styles.dateText}>
-              {new Date().toLocaleDateString('en-IN', {
-                weekday: 'long',
-                day: 'numeric',
-                month: 'short',
-                year: 'numeric',
-              })}
-            </Text>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 12, flex: 1, marginRight: 12 }}>
+            <PatientAvatar
+              patientId={currentPatientId || profile?.patient_id}
+              fallbackName={profile?.name}
+              size="md"
+            />
+            <View style={{ flex: 1 }}>
+              <Text style={styles.welcomeText}>
+                Namaste, {profile?.name ? profile.name.split(' ')[0] : 'Patient'}
+              </Text>
+              <Text style={styles.dateText}>
+                {new Date().toLocaleDateString('en-IN', {
+                  weekday: 'long',
+                  day: 'numeric',
+                  month: 'short',
+                  year: 'numeric',
+                })}
+              </Text>
+            </View>
           </View>
 
           <TouchableOpacity

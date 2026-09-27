@@ -83,7 +83,7 @@ export const BklitTimelineChart = memo(function BklitTimelineChart({
       <div className="flex flex-wrap items-start justify-between gap-3 pb-4 mb-5 border-b border-slate-100">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">
-            BKLIT.UI COMPOSABLE CHRONOLOGY
+            LONGITUDINAL CHRONOLOGY
           </div>
           <h3 className="font-display text-lg font-semibold text-[#111827] tracking-tight">
             Longitudinal Regimen &amp; Adverse Event Timeline
@@ -261,7 +261,7 @@ export const BklitRingGaugeChart = memo(function BklitRingGaugeChart({
     <div className="rounded-[2rem] bg-white border border-slate-200/70 p-6 sm:p-7 shadow-diffusion flex flex-col justify-between">
       <div className="pb-4 mb-4 border-b border-slate-100">
         <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">
-          BKLIT.UI RADIAL TELEMETRY
+          CLINICAL TELEMETRY
         </div>
         <h3 className="font-display text-lg font-semibold text-[#111827] tracking-tight">
           Signal &amp; Fatigue Telemetry
@@ -390,7 +390,7 @@ export const BklitHorizontalBarChart = memo(function BklitHorizontalBarChart({
       <div className="pb-4 mb-4 border-b border-slate-100 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">
-            BKLIT.UI DISPROPORTIONALITY BARS
+            DISPROPORTIONALITY METRICS
           </div>
           <h3 className="font-display text-lg font-semibold text-[#111827] tracking-tight">
             {title}
@@ -497,7 +497,7 @@ export const BklitVolcanoChart = memo(function BklitVolcanoChart({
       <div className="pb-4 mb-4 border-b border-slate-100 flex flex-wrap items-start justify-between gap-2">
         <div>
           <div className="text-[11px] font-semibold uppercase tracking-[0.14em] text-slate-400 mb-1">
-            BKLIT.UI VOLCANO MATRIX
+            SIGNAL VOLCANO MATRIX
           </div>
           <h3 className="font-display text-lg font-semibold text-[#111827] tracking-tight">
             {title}

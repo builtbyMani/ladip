@@ -66,7 +66,7 @@ function AnimatedBarFill({ ratio, color, delay = 0 }) {
  */
 export function BklitBarChart({
   title = 'FAERS Disproportionality (PRR)',
-  eyebrow = 'BKLIT.UI TELEMETRY • MOTION.DEV',
+  eyebrow = 'CLINICAL TELEMETRY',
   subtitle = 'Tap any bar to inspect 2x2 disproportionality metrics.',
   items = [],
   threshold = 2.0,
@@ -124,10 +124,10 @@ export function BklitBarChart({
         );
       })}
 
-      {/* Composable Bklit ChartTooltip Inspector */}
+      {/* Composable ChartTooltip Inspector */}
       {activeItem && (
         <View style={styles.tooltipBox}>
-          <Text style={styles.ttEyebrow}>BKLIT.UI SIGNAL INSPECTOR</Text>
+          <Text style={styles.ttEyebrow}>SIGNAL INSPECTOR</Text>
           <Text style={styles.ttTitle}>{activeItem.label}</Text>
           <View style={styles.ttRow}>
             <Text style={styles.ttKey}>Reporting Ratio (PRR)</Text>
@@ -150,11 +150,11 @@ export function BklitBarChart({
 }
 
 /**
- * Composable Bklit.UI Radial / Progress Telemetry Card
+ * Composable Radial / Progress Telemetry Card
  */
 export function BklitRingChart({
   title = 'Daily Adherence & Safety Telemetry',
-  eyebrow = 'BKLIT.UI TELEMETRY • MOTION.DEV',
+  eyebrow = 'CLINICAL TELEMETRY',
   metrics = [],
 }) {
   const [selectedIdx, setSelectedIdx] = useState(0);
@@ -201,7 +201,7 @@ export function BklitRingChart({
       </View>
       {activeMetric && (
         <View style={styles.tooltipBox}>
-          <Text style={styles.ttEyebrow}>BKLIT.UI TELEMETRY INSPECTOR</Text>
+          <Text style={styles.ttEyebrow}>TELEMETRY INSPECTOR</Text>
           <Text style={styles.ttTitle}>{activeMetric.label}</Text>
           <View style={styles.ttRow}>
             <Text style={styles.ttKey}>Current Reading</Text>

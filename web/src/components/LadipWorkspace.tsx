@@ -135,12 +135,95 @@ const WORKFLOW_META: Record<
 const WORKFLOW_ORDER: WorkflowSlug[] = ["discovery", "safety", "ehr", "faers"];
 
 const SAFETY_PRESETS = [
-  { name: "Ibuprofen", dose: 400 },
-  { name: "Paracetamol", dose: 500 },
-  { name: "Amiodarone", dose: 200 },
-  { name: "Bactrim", dose: 800 },
-  { name: "Pantoprazole", dose: 40 },
+  { name: "Dolo 650", dose: 650, label: "Dolo 650 (Paracetamol 650mg)" },
+  { name: "Brufen 400", dose: 400, label: "Brufen 400 (Ibuprofen 400mg)" },
+  { name: "Combiflam", dose: 400, label: "Combiflam (Ibuprofen + PCM)" },
+  { name: "Cordarone", dose: 200, label: "Cordarone 200mg (Amiodarone)" },
+  { name: "Bactrim DS", dose: 800, label: "Bactrim DS 800mg" },
+  { name: "Pan 40", dose: 40, label: "Pan 40 (Pantoprazole 40mg)" },
 ];
+
+function resolveWebMedicine(rawInput: string, currentDose: string) {
+  const trimmed = (rawInput || "").trim();
+  if (!trimmed) return null;
+  const lower = trimmed.toLowerCase();
+  const doseMatch = trimmed.match(/\b(\d+(?:\.\d+)?)\s*(?:mg|mcg|g|ml)?\b/i);
+  const embeddedDose = doseMatch ? doseMatch[1] : "";
+
+  const BRAND_MAP: {
+    keys: string[];
+    medicinalName: string;
+    defaultDose: string;
+    indication: string;
+  }[] = [
+    {
+      keys: ["dolo", "crocin", "calpol", "paracetamol", "acetaminophen", "tylenol"],
+      medicinalName: "Paracetamol (Acetaminophen)",
+      defaultDose: "650",
+      indication: "Antipyretic & Analgesic (Fever & Pain Relief)",
+    },
+    {
+      keys: ["brufen", "advil", "motrin", "ibuprofen"],
+      medicinalName: "Ibuprofen (NSAID)",
+      defaultDose: "400",
+      indication: "Non-Steroidal Anti-Inflammatory & Painkiller",
+    },
+    {
+      keys: ["combiflam", "imol"],
+      medicinalName: "Ibuprofen (400 mg) + Paracetamol (325 mg)",
+      defaultDose: "400",
+      indication: "Combined NSAID + Analgesic (Inflammatory Pain & Fever)",
+    },
+    {
+      keys: ["ecosprin", "disprin", "aspirin"],
+      medicinalName: "Aspirin (Acetylsalicylic Acid)",
+      defaultDose: "75",
+      indication: "Antiplatelet Blood Thinner & Analgesic",
+    },
+    {
+      keys: ["pan", "pantocid", "pantoprazole"],
+      medicinalName: "Pantoprazole Sodium",
+      defaultDose: "40",
+      indication: "Proton Pump Inhibitor (Gastric Acid Suppression)",
+    },
+    {
+      keys: ["omez", "prilosec", "omeprazole"],
+      medicinalName: "Omeprazole",
+      defaultDose: "20",
+      indication: "Proton Pump Inhibitor (Acid Reflux & GERD)",
+    },
+    {
+      keys: ["cordarone", "amiodarone"],
+      medicinalName: "Amiodarone Hydrochloride",
+      defaultDose: "200",
+      indication: "Class III Antiarrhythmic (Cardiac Rhythm Control)",
+    },
+    {
+      keys: ["bactrim", "septran", "septra", "trimethoprim"],
+      medicinalName: "Trimethoprim + Sulfamethoxazole (Co-trimoxazole)",
+      defaultDose: "800",
+      indication: "Sulfonamide Combination Antibiotic",
+    },
+    {
+      keys: ["glycomet", "glucophage", "metformin"],
+      medicinalName: "Metformin Hydrochloride",
+      defaultDose: "500",
+      indication: "Biguanide Oral Antidiabetic",
+    },
+  ];
+
+  const found = BRAND_MAP.find((entry) =>
+    entry.keys.some((k) => lower.includes(k))
+  );
+  const resolvedDose = embeddedDose || (found ? found.defaultDose : currentDose || "400");
+
+  return {
+    entered: trimmed,
+    medicinalName: found ? found.medicinalName : `${trimmed} (Active Ingredient)`,
+    dose: resolvedDose,
+    indication: found ? found.indication : "Active Pharmaceutical Ingredient",
+  };
+}
 
 const FAERS_PRESETS = [
   { label: "Triple Bleed", query: "Warfarin, Aspirin, Ibuprofen" },
@@ -2203,9 +2286,9 @@ export default function LadipWorkspace() {
                 {/* Quick Clinical Test Candidates */}
                 <div className="mt-6">
                   <div className="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2.5">
-                    Quick Clinical Test Candidates
+                    Quick Clinical &amp; Brand Test Candidates
                   </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5">
                     {SAFETY_PRESETS.map((preset) => (
                       <button
                         key={preset.name}
@@ -2215,9 +2298,9 @@ export default function LadipWorkspace() {
                           setCandidateDose(String(preset.dose));
                           handleRunSafetyCheck(preset.name, preset.dose);
                         }}
-                        className="px-3.5 py-2.5 rounded-full bg-[#F5F2EB] hover:bg-[#EAE4D7] active:scale-[0.98] text-[#111827] text-xs font-semibold transition-all text-center border border-stone-200"
+                        className="px-3.5 py-2.5 rounded-full bg-[#F5F2EB] hover:bg-[#EAE4D7] active:scale-[0.98] text-[#111827] text-xs font-semibold transition-all text-center border border-stone-200 truncate"
                       >
-                        {preset.name} {preset.dose}mg
+                        {preset.label}
                       </button>
                     ))}
                   </div>
@@ -2236,14 +2319,21 @@ export default function LadipWorkspace() {
                       htmlFor="candidate-drug-input"
                       className="text-xs font-semibold text-[#111827]"
                     >
-                      Proposed Drug Name
+                      Brand or Generic Drug Name
                     </label>
                     <input
                       id="candidate-drug-input"
                       type="text"
                       value={candidateDrug}
-                      onChange={(e) => setCandidateDrug(e.target.value)}
-                      placeholder="e.g. Ibuprofen, Amiodarone, Paracetamol"
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setCandidateDrug(val);
+                        const resolved = resolveWebMedicine(val, "");
+                        if (resolved && resolved.dose) {
+                          setCandidateDose(resolved.dose);
+                        }
+                      }}
+                      placeholder="e.g. Dolo 650, Brufen 400, Pan 40, Ibuprofen"
                       className="w-full rounded-2xl border border-slate-200 bg-[#F8FAFC] px-4 py-2.5 text-sm text-[#111827] focus:outline-none focus:border-[#4A7BB7]"
                     />
                   </div>
@@ -2299,6 +2389,35 @@ export default function LadipWorkspace() {
                   </div>
                 </form>
 
+                {/* Live Brand-to-Medicinal Name & Dosage Resolver Strip */}
+                {(() => {
+                  const resolved = resolveWebMedicine(candidateDrug, candidateDose);
+                  if (!resolved) return null;
+                  return (
+                    <div className="mt-4 p-4 rounded-2xl bg-[#F8FAFC] border border-slate-200/80 flex flex-wrap items-center justify-between gap-3 text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold uppercase tracking-wider text-[10px] text-[#3B6EA8] bg-[#EAF2FA] px-2.5 py-1 rounded-full">
+                          Resolved Medicinal Composition
+                        </span>
+                        <span className="text-slate-600">
+                          Entered: <strong className="text-[#111827]">{resolved.entered}</strong>
+                        </span>
+                        <span className="text-slate-400">&rarr;</span>
+                        <span className="text-slate-600">
+                          Actual Medicinal Name:{" "}
+                          <strong className="text-[#1B7A3D]">{resolved.medicinalName}</strong>
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-slate-500 hidden md:inline">{resolved.indication}</span>
+                        <span className="font-mono font-bold px-2.5 py-1 rounded-full bg-[#111827] text-white text-[11px]">
+                          {candidateDose || resolved.dose} {candidateUnit}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })()}
+
                 {safetyError && (
                   <div className="mt-5 p-4 rounded-2xl bg-red-50 border border-red-200 text-xs text-[#DC2626] flex items-center gap-2 font-medium">
                     <WarningCircle size={18} weight="fill" />
@@ -2340,8 +2459,12 @@ export default function LadipWorkspace() {
                         </span>
                       </div>
                       <h3 className="font-display text-xl font-bold text-[#111827]">
-                        {safetyResult.new_drug} ({candidateDose} {candidateUnit}
-                        )
+                        {safetyResult.new_drug} —{" "}
+                        <span className="text-[#1B7A3D]">
+                          {resolveWebMedicine(safetyResult.new_drug, candidateDose)?.medicinalName ||
+                            safetyResult.normalized_ingredient}
+                        </span>{" "}
+                        ({candidateDose} {candidateUnit})
                       </h3>
                       <p className="text-xs sm:text-sm text-slate-700 mt-1.5 leading-relaxed">
                         {safetyResult.recommendation}
@@ -2406,7 +2529,7 @@ export default function LadipWorkspace() {
                                 })
                               )}
                               title="Emergent Combination Disproportionality (PRR)"
-                              subtitle="Bklit.UI comparison of triggered multi-drug reporting ratios"
+                              subtitle="Comparison of triggered multi-drug reporting ratios"
                             />
                             <div className="space-y-2.5">
                               {safetyResult.flagged_interactions.map((c, i) => (
@@ -2928,7 +3051,7 @@ export default function LadipWorkspace() {
                               tier: s.severity_tier,
                             }))}
                             title="Reporting Ratio Comparison (PRR)"
-                            subtitle="Bklit.UI horizontal bars animated with spring physics"
+                            subtitle="Disproportionality bars across co-reported adverse reactions"
                           />
 
                           <BklitVolcanoChart

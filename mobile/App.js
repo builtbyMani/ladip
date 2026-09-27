@@ -18,6 +18,7 @@ import { Ionicons } from '@expo/vector-icons';
 
 import { PatientProvider, usePatient } from './src/context/PatientContext';
 import Header from './src/components/Header';
+import LoginScreen from './src/screens/LoginScreen';
 import TodayScheduleScreen from './src/screens/TodayScheduleScreen';
 import DrugCheckerScreen from './src/screens/DrugCheckerScreen';
 import PrescriptionScannerScreen from './src/screens/PrescriptionScannerScreen';
@@ -81,7 +82,7 @@ function resolveInitialWebTab() {
 
 function MainAppContent() {
   const [activeTab, setActiveTab] = useState(resolveInitialWebTab);
-  const { alerts, profile } = usePatient();
+  const { isAuthenticated, alerts, profile } = usePatient();
 
   const criticalCount =
     alerts?.filter(
@@ -117,6 +118,15 @@ function MainAppContent() {
       descTag.setAttribute('content', meta.description);
     }
   }, [activeTab, profile?.name]);
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <StatusBar style="dark" backgroundColor="#FFFFFF" />
+        <LoginScreen />
+      </SafeAreaView>
+    );
+  }
 
   const renderActiveScreen = () => {
     switch (activeTab) {

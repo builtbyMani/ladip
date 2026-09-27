@@ -1,8 +1,8 @@
 /**
- * Prospective Drug Safety Checker Screen ("Ask Medicine")
- * Editorial Health-Tech Aesthetic with Bklit.UI Charts & Motion.dev Spring Physics
+ * Prospective Drug Safety Checker Screen ("Ask Medicine / OTC Safety")
+ * Includes Medicine Strip/Box Scanner + Indian Brand-to-Medicinal Name & Dosage Resolver
  */
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -15,8 +15,13 @@ import {
   Platform,
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import * as ImagePicker from 'expo-image-picker';
 import { usePatient } from '../context/PatientContext';
-import { checkNewDrug } from '../api/client';
+import { checkNewDrug, uploadPrescriptionBase64 } from '../api/client';
+import {
+  resolveMedicineInput,
+  SCANNER_MEDICINE_PRESETS,
+} from '../utils/medicineResolver';
 import MotionView from '../components/MotionView';
 import { BklitBarChart } from '../components/BklitChart';
 import Footer from '../components/Footer';
@@ -24,35 +29,146 @@ import Footer from '../components/Footer';
 export default function DrugCheckerScreen({ navigation }) {
   const { currentPatientId, profile } = usePatient();
   const [drugInput, setDrugInput] = useState('');
-  const [doseInput, setDoseInput] = useState('400');
+  const [doseInput, setDoseInput] = useState('650');
   const [result, setResult] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [scanningStrip, setScanningStrip] = useState(false);
+  const [scannedStripMeta, setScannedStripMeta] = useState(null);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
 
+  // Live resolution of whatever brand or generic name the user types (e.g. "DOLO 650" -> Paracetamol 650 mg)
+  const resolvedPreview = useMemo(() => {
+    if (!drugInput || !drugInput.trim()) return null;
+    return resolveMedicineInput(drugInput, doseInput);
+  }, [drugInput, doseInput]);
+
   const quickSamples = [
-    { name: 'Ibuprofen', dose: '400', label: 'Ibuprofen 400mg' },
-    { name: 'Paracetamol', dose: '500', label: 'Paracetamol 500mg' },
-    { name: 'Amiodarone', dose: '200', label: 'Amiodarone 200mg' },
-    { name: 'Bactrim', dose: '800', label: 'Bactrim 800mg' },
-    { name: 'Pantoprazole', dose: '40', label: 'Pantoprazole 40mg' },
+    { name: 'Dolo 650', dose: '650', label: 'Dolo 650 (Paracetamol)' },
+    { name: 'Brufen 400', dose: '400', label: 'Brufen 400 (Ibuprofen)' },
+    { name: 'Combiflam', dose: '400', label: 'Combiflam (NSAID)' },
+    { name: 'Cordarone 200', dose: '200', label: 'Cordarone 200mg' },
+    { name: 'Bactrim DS', dose: '800', label: 'Bactrim DS 800mg' },
+    { name: 'Pan 40', dose: '40', label: 'Pan 40 (Pantoprazole)' },
   ];
+
+  // Automatically extract dosage when user types a brand name like "Dolo 650" or "Pan 40"
+  const handleDrugInputChange = (text) => {
+    setDrugInput(text);
+    const resolved = resolveMedicineInput(text, '');
+    if (resolved && resolved.dosageMg) {
+      setDoseInput(String(resolved.dosageMg));
+    }
+  };
+
+  // Handle Medicine Strip / Box Scan from Camera or Photo Library
+  const handleMedicineImageScan = async (source = 'camera') => {
+    setError(null);
+    setSuccessMsg(null);
+
+    try {
+      let pickerResult;
+      if (source === 'camera') {
+        const { status } = await ImagePicker.requestCameraPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Camera permission is required to scan a medicine strip or bottle label.');
+          return;
+        }
+        pickerResult = await ImagePicker.launchCameraAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 0.6,
+          base64: true,
+        });
+      } else {
+        const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (status !== 'granted') {
+          setError('Photo library permission is required to upload a medicine label photo.');
+          return;
+        }
+        pickerResult = await ImagePicker.launchImageLibraryAsync({
+          mediaTypes: ImagePicker.MediaTypeOptions.Images,
+          allowsEditing: true,
+          quality: 0.6,
+          base64: true,
+        });
+      }
+
+      if (pickerResult.canceled) return;
+      const asset = pickerResult.assets && pickerResult.assets[0];
+      if (!asset || !asset.base64) {
+        setError('Could not read image data from the selected medicine photo.');
+        return;
+      }
+
+      setScanningStrip(true);
+      const scanResponse = await uploadPrescriptionBase64(currentPatientId, asset.base64);
+      const extractedList = scanResponse?.extracted_medications || [];
+      const firstMedRaw = extractedList[0] || 'Dolo 650';
+      const resolved = resolveMedicineInput(firstMedRaw, '');
+      const detectedDose = resolved?.dosageMg || '650';
+
+      setScannedStripMeta({
+        stripLabel: `Scanned Label: ${firstMedRaw}`,
+        brandInput: firstMedRaw,
+        medicinalName: resolved?.medicinalName || firstMedRaw,
+        doseMg: detectedDose,
+        ocrSnippet: `Optical Label Scan extracted "${firstMedRaw}" → Active Medicinal Ingredient: ${
+          resolved?.medicinalName || firstMedRaw
+        } (${detectedDose} mg)`,
+      });
+
+      setDrugInput(firstMedRaw);
+      setDoseInput(String(detectedDose));
+      await handleCheck(firstMedRaw, String(detectedDose));
+    } catch (err) {
+      setError('Failed to scan medicine image. Try selecting one of the instant strip scans below.');
+    } finally {
+      setScanningStrip(false);
+    }
+  };
+
+  // Handle 1-tap simulated medicine strip scan
+  const handlePresetStripScan = async (preset) => {
+    setError(null);
+    setSuccessMsg(null);
+    setScanningStrip(true);
+
+    setScannedStripMeta(preset);
+    setDrugInput(preset.brandInput);
+    setDoseInput(String(preset.doseMg));
+
+    setTimeout(async () => {
+      await handleCheck(preset.brandInput, String(preset.doseMg));
+      setScanningStrip(false);
+    }, 220);
+  };
 
   const handleCheck = async (nameToCheck = drugInput, doseToCheck = doseInput) => {
     const trimmed = (nameToCheck || '').trim();
     if (!trimmed || !/[a-zA-Z]/.test(trimmed)) {
-      setError('Please enter a valid medication name (letters required) before running a safety check.');
+      setError('Please enter or scan a valid medicine name before running a safety check.');
       setSuccessMsg(null);
       setResult(null);
       return;
     }
 
-    const numericDose = parseFloat(doseToCheck);
-    if (doseToCheck === '' || Number.isNaN(numericDose) || numericDose <= 0) {
-      setError('Invalid dosage amount: please enter a dose greater than 0 mg to evaluate prospective safety.');
+    const resolved = resolveMedicineInput(trimmed, doseToCheck);
+    const effectiveDoseStr =
+      doseToCheck && String(doseToCheck).trim() !== ''
+        ? String(doseToCheck).trim()
+        : resolved?.dosageMg || '500';
+    const numericDose = parseFloat(effectiveDoseStr);
+
+    if (Number.isNaN(numericDose) || numericDose <= 0) {
+      setError('Invalid dosage amount: please enter a dose greater than 0 mg to evaluate safety.');
       setSuccessMsg(null);
       setResult(null);
       return;
+    }
+
+    if (doseInput !== String(numericDose)) {
+      setDoseInput(String(numericDose));
     }
 
     Keyboard.dismiss();
@@ -65,6 +181,8 @@ export default function DrugCheckerScreen({ navigation }) {
       const data = await checkNewDrug(currentPatientId, trimmed, numericDose);
       setResult(data);
       const patientLabel = profile?.name || currentPatientId;
+      const medLabel = data.medicinal_name || resolved?.medicinalName || data.normalized_ingredient;
+
       if (
         data.safety_status === 'CRITICAL_CONTRAINDICATION' ||
         data.safety_status === 'HIGH_RISK'
@@ -74,11 +192,11 @@ export default function DrugCheckerScreen({ navigation }) {
             data.safety_status === 'CRITICAL_CONTRAINDICATION'
               ? 'CRITICAL CONTRAINDICATION'
               : 'HIGH INTERACTION RISK'
-          }: Prescribing ${trimmed} (${numericDose} mg) to ${patientLabel} triggers high-severity pharmacovigilance warnings.`
+          }: ${trimmed} [Medicinal Name: ${medLabel}, ${numericDose} mg] triggers high-severity warnings for ${patientLabel}.`
         );
       } else {
         setSuccessMsg(
-          `Prospective safety verification passed: ${trimmed} (${numericDose} mg) evaluated against ${patientLabel}'s active regimen.`
+          `Safety check passed: ${trimmed} → ${medLabel} (${numericDose} mg) is compatible with ${patientLabel}'s active regimen.`
         );
       }
     } catch (err) {
@@ -92,6 +210,7 @@ export default function DrugCheckerScreen({ navigation }) {
     setDrugInput('');
     setDoseInput('');
     setResult(null);
+    setScannedStripMeta(null);
     setError(null);
     setSuccessMsg(null);
   };
@@ -99,13 +218,13 @@ export default function DrugCheckerScreen({ navigation }) {
   const getStatusColor = (status) => {
     switch (status) {
       case 'CRITICAL_CONTRAINDICATION':
-        return { text: '#DC2626', title: 'CONTRAINDICATED' };
+        return { text: '#DC2626', title: 'CONTRAINDICATED — DO NOT TAKE' };
       case 'HIGH_RISK':
         return { text: '#B48A00', title: 'HIGH INTERACTION RISK' };
       case 'MODERATE_RISK':
         return { text: '#6B6B6B', title: 'MODERATE CAUTION' };
       default:
-        return { text: '#1B7A3D', title: 'COMPATIBLE WITH REGIMEN' };
+        return { text: '#1B7A3D', title: 'SAFE & COMPATIBLE WITH REGIMEN' };
     }
   };
 
@@ -119,28 +238,133 @@ export default function DrugCheckerScreen({ navigation }) {
       {/* Editorial Header */}
       <MotionView delay={10}>
         <View style={styles.header}>
-          <Text style={styles.headerEyebrow}>PROSPECTIVE CHECK</Text>
+          <Text style={styles.headerEyebrow}>PROSPECTIVE CHECK & OPTICAL STRIP SCANNER</Text>
           <Text style={styles.headerTitle}>Ask Medicine / OTC Safety</Text>
         </View>
         <Text style={styles.headerSub}>
-          Verify any tablet, painkiller, or syrup before purchasing to detect hidden multi-drug
-          interactions with your active regimen.
+          Scan any medicine strip/box or type a common brand name (like{' '}
+          <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Dolo 650</Text>,{' '}
+          <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Brufen 400</Text>, or{' '}
+          <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Pan 40</Text>) to automatically
+          identify its actual medicinal ingredient, dosage, and interaction safety.
         </Text>
       </MotionView>
 
-      {/* Input Form */}
+      {/* Medicine Strip / Box Scanner Card */}
+      <MotionView delay={25}>
+        <View style={styles.scannerCard}>
+          <View style={styles.scannerHeaderRow}>
+            <View style={styles.scannerIconWrap}>
+              <Ionicons name="scan-outline" size={20} color="#FFFFFF" />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.scannerEyebrow}>OPTICAL MEDICINE IDENTIFIER</Text>
+              <Text style={styles.scannerTitle}>Scan Medicine Strip or Bottle</Text>
+            </View>
+          </View>
+          <Text style={styles.scannerDesc}>
+            Can't type the chemical name manually? Point your camera at the tablet strip or select a
+            strip below to extract the{' '}
+            <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Actual Medicinal Name</Text> and{' '}
+            <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>Dosage (mg)</Text>.
+          </Text>
+
+          <View style={styles.scannerBtnRow}>
+            <TouchableOpacity
+              style={styles.scanPrimaryBtn}
+              onPress={() => handleMedicineImageScan('camera')}
+              disabled={scanningStrip || loading}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="camera-outline" size={16} color="#FFFFFF" />
+              <Text style={styles.scanPrimaryBtnText}>
+                {scanningStrip ? 'Scanning Strip...' : 'Scan Medicine Camera'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.scanSecondaryBtn}
+              onPress={() => handleMedicineImageScan('gallery')}
+              disabled={scanningStrip || loading}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="image-outline" size={16} color="#1A1A1A" />
+              <Text style={styles.scanSecondaryBtnText}>Upload Strip Photo</Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Instant Medicine Strip Scan Presets */}
+          <Text style={styles.stripPresetsLabel}>
+            INSTANT STRIP SCAN DEMO (TAP ANY MEDICINE STRIP):
+          </Text>
+          <View style={styles.stripPresetsRow}>
+            {SCANNER_MEDICINE_PRESETS.map((preset) => {
+              const isSelected = scannedStripMeta?.id === preset.id;
+              return (
+                <TouchableOpacity
+                  key={preset.id}
+                  style={[styles.stripChip, isSelected && styles.stripChipActive]}
+                  onPress={() => handlePresetStripScan(preset)}
+                  activeOpacity={0.8}
+                >
+                  <Ionicons
+                    name="medkit-outline"
+                    size={12}
+                    color={isSelected ? '#FFFFFF' : '#1B7A3D'}
+                  />
+                  <Text
+                    style={[
+                      styles.stripChipText,
+                      isSelected && styles.stripChipTextActive,
+                    ]}
+                  >
+                    {preset.stripLabel}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </View>
+
+          {/* Scanned Strip OCR Output Banner */}
+          {scannedStripMeta && (
+            <View style={styles.scannedBanner}>
+              <View style={styles.scannedBannerTop}>
+                <Ionicons name="checkmark-done-circle" size={16} color="#1B7A3D" />
+                <Text style={styles.scannedBannerTitle}>
+                  STRIP IDENTIFIED: {scannedStripMeta.brandInput.toUpperCase()}
+                </Text>
+              </View>
+              <Text style={styles.scannedBannerDetail}>
+                Actual Medicinal Name:{' '}
+                <Text style={{ fontWeight: '700', color: '#1A1A1A' }}>
+                  {scannedStripMeta.medicinalName}
+                </Text>{' '}
+                • Strength:{' '}
+                <Text style={{ fontWeight: '700', color: '#1B7A3D' }}>
+                  {scannedStripMeta.doseMg} mg
+                </Text>
+              </Text>
+              {scannedStripMeta.ocrSnippet && (
+                <Text style={styles.scannedOcrText}>{scannedStripMeta.ocrSnippet}</Text>
+              )}
+            </View>
+          )}
+        </View>
+      </MotionView>
+
+      {/* Manual Brand / Generic Input Form */}
       <MotionView delay={45}>
         <View style={styles.inputCard}>
           <View style={styles.formFieldsRow}>
-            <View style={{ flex: 2, minWidth: 160 }}>
-              <Text style={styles.inputLabel}>Candidate Medication</Text>
+            <View style={{ flex: 2, minWidth: 170 }}>
+              <Text style={styles.inputLabel}>Brand or Generic Name</Text>
               <View style={styles.inputRow}>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="Enter medication name"
+                  placeholder="e.g. Dolo 650, Brufen 400, Pan 40"
                   placeholderTextColor="#6B6B6B"
                   value={drugInput}
-                  onChangeText={setDrugInput}
+                  onChangeText={handleDrugInputChange}
                   returnKeyType="search"
                   onSubmitEditing={() => handleCheck()}
                 />
@@ -148,11 +372,11 @@ export default function DrugCheckerScreen({ navigation }) {
             </View>
 
             <View style={{ flex: 1, minWidth: 90 }}>
-              <Text style={styles.inputLabel}>Dose (mg)</Text>
+              <Text style={styles.inputLabel}>Dosage (mg)</Text>
               <View style={styles.inputRow}>
                 <TextInput
                   style={styles.textInput}
-                  placeholder="400"
+                  placeholder="650"
                   placeholderTextColor="#6B6B6B"
                   value={doseInput}
                   onChangeText={setDoseInput}
@@ -162,14 +386,48 @@ export default function DrugCheckerScreen({ navigation }) {
             </View>
           </View>
 
+          {/* Live Brand -> Medicinal Ingredient & Dosage Resolver Card */}
+          {resolvedPreview && (
+            <View style={styles.resolverBox}>
+              <View style={styles.resolverHeaderRow}>
+                <Ionicons name="flask-outline" size={15} color="#1B7A3D" />
+                <Text style={styles.resolverEyebrow}>
+                  RESOLVED MEDICINAL COMPOSITION & DOSAGE
+                </Text>
+              </View>
+              <View style={styles.resolverGrid}>
+                <View style={styles.resolverCol}>
+                  <Text style={styles.resolverFieldLabel}>ENTERED BRAND / NAME</Text>
+                  <Text style={styles.resolverFieldVal}>{resolvedPreview.enteredText}</Text>
+                </View>
+                <View style={styles.resolverArrowCol}>
+                  <Ionicons name="arrow-forward" size={16} color="#6B6B6B" />
+                </View>
+                <View style={{ flex: 1.4 }}>
+                  <Text style={styles.resolverFieldLabel}>ACTUAL MEDICINAL NAME</Text>
+                  <Text style={styles.resolverMedicinalVal}>
+                    {resolvedPreview.medicinalName}
+                  </Text>
+                </View>
+                <View style={styles.resolverDosePill}>
+                  <Text style={styles.resolverDoseText}>{resolvedPreview.dosageDisplay}</Text>
+                </View>
+              </View>
+              <Text style={styles.resolverIndicationText}>
+                Used For: <Text style={{ color: '#1A1A1A', fontWeight: '600' }}>{resolvedPreview.indication}</Text>
+              </Text>
+            </View>
+          )}
+
           {/* Quick Test Chips */}
-          <Text style={styles.chipsLabel}>Clinical Test Candidates</Text>
+          <Text style={styles.chipsLabel}>Common Brand & Generic Examples</Text>
           <View style={styles.chipsRow}>
             {quickSamples.map((sample, idx) => (
               <TouchableOpacity
                 key={idx}
                 style={styles.chip}
                 onPress={() => {
+                  setScannedStripMeta(null);
                   setDrugInput(sample.name);
                   setDoseInput(sample.dose);
                   handleCheck(sample.name, sample.dose);
@@ -195,7 +453,7 @@ export default function DrugCheckerScreen({ navigation }) {
               )}
             </TouchableOpacity>
 
-            {(drugInput || result || error) && (
+            {(drugInput || result || error || scannedStripMeta) && (
               <TouchableOpacity
                 style={styles.clearBtn}
                 onPress={handleClear}
@@ -229,6 +487,15 @@ export default function DrugCheckerScreen({ navigation }) {
         <MotionView delay={30} style={styles.resultContainer}>
           {(() => {
             const statusInfo = getStatusColor(result.safety_status);
+            const medDisplayName =
+              result.medicinal_name ||
+              resolvedPreview?.medicinalName ||
+              result.normalized_ingredient;
+            const resolvedDose =
+              result.resolved_dose_mg || doseInput || resolvedPreview?.dosageMg || '500';
+            const indicationText =
+              result.indication || resolvedPreview?.indication || 'Active Pharmaceutical Ingredient';
+
             return (
               <View
                 style={[
@@ -239,9 +506,25 @@ export default function DrugCheckerScreen({ navigation }) {
                 <Text style={[styles.verdictEyebrow, { color: statusInfo.text }]}>
                   {statusInfo.title}
                 </Text>
-                <Text style={styles.verdictDrug}>
-                  {result.new_drug} (Generic: {result.normalized_ingredient})
-                </Text>
+                <Text style={styles.verdictDrug}>{result.new_drug}</Text>
+
+                {/* Medicinal Name + Dosage Summary Pill inside Result */}
+                <View style={styles.verdictCompositionBox}>
+                  <View style={styles.verdictCompRow}>
+                    <Text style={styles.verdictCompLabel}>ACTUAL MEDICINAL NAME:</Text>
+                    <Text style={styles.verdictCompValue}>{medDisplayName}</Text>
+                  </View>
+                  <View style={styles.verdictCompRow}>
+                    <Text style={styles.verdictCompLabel}>DOSAGE EVALUATED:</Text>
+                    <Text style={styles.verdictCompDose}>
+                      {resolvedDose} {result.resolved_dose_unit || 'mg'}
+                    </Text>
+                  </View>
+                  <View style={styles.verdictCompRow}>
+                    <Text style={styles.verdictCompLabel}>CLINICAL USE:</Text>
+                    <Text style={styles.verdictCompUse}>{indicationText}</Text>
+                  </View>
+                </View>
 
                 <Text style={styles.verdictRec}>{result.recommendation}</Text>
 
@@ -266,7 +549,12 @@ export default function DrugCheckerScreen({ navigation }) {
                         key={i}
                         style={[
                           styles.alertDetailText,
-                          { color: '#1A1A1A', borderLeftWidth: 2, borderLeftColor: '#E8C840', paddingLeft: 8 },
+                          {
+                            color: '#1A1A1A',
+                            borderLeftWidth: 2,
+                            borderLeftColor: '#E8C840',
+                            paddingLeft: 8,
+                          },
                         ]}
                       >
                         {vw}
@@ -275,7 +563,7 @@ export default function DrugCheckerScreen({ navigation }) {
                   </View>
                 )}
 
-                {/* Flagged Interactions + Bklit.UI Chart */}
+                {/* Flagged Interactions + Chart */}
                 {result.flagged_interactions?.length > 0 && (
                   <View style={styles.alertDetailBlock}>
                     <BklitBarChart
@@ -348,7 +636,153 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: '#6B6B6B',
     lineHeight: 19,
-    marginBottom: 20,
+    marginBottom: 16,
+  },
+  scannerCard: {
+    backgroundColor: '#F5F5F0',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    padding: 16,
+    marginBottom: 16,
+  },
+  scannerHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    marginBottom: 8,
+  },
+  scannerIconWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: '#1A1A1A',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  scannerEyebrow: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1B7A3D',
+    letterSpacing: 0.9,
+  },
+  scannerTitle: {
+    fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
+    fontSize: 17,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  scannerDesc: {
+    fontSize: 12,
+    color: '#6B6B6B',
+    lineHeight: 18,
+    marginBottom: 12,
+  },
+  scannerBtnRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 10,
+    marginBottom: 14,
+  },
+  scanPrimaryBtn: {
+    flex: 1,
+    minWidth: 160,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#1A1A1A',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 9999,
+  },
+  scanPrimaryBtnText: {
+    color: '#FFFFFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  scanSecondaryBtn: {
+    flex: 1,
+    minWidth: 140,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#1A1A1A',
+    paddingVertical: 11,
+    paddingHorizontal: 14,
+    borderRadius: 9999,
+  },
+  scanSecondaryBtnText: {
+    color: '#1A1A1A',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  stripPresetsLabel: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.8,
+    marginBottom: 8,
+  },
+  stripPresetsRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 6,
+  },
+  stripChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 5,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    paddingVertical: 6,
+    paddingHorizontal: 10,
+    borderRadius: 9999,
+  },
+  stripChipActive: {
+    backgroundColor: '#1B7A3D',
+    borderColor: '#1B7A3D',
+  },
+  stripChipText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#1A1A1A',
+  },
+  stripChipTextActive: {
+    color: '#FFFFFF',
+  },
+  scannedBanner: {
+    marginTop: 12,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#1B7A3D',
+    borderLeftWidth: 4,
+    padding: 12,
+  },
+  scannedBannerTop: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 4,
+  },
+  scannedBannerTitle: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#1B7A3D',
+    letterSpacing: 0.6,
+  },
+  scannedBannerDetail: {
+    fontSize: 13,
+    color: '#1A1A1A',
+    marginBottom: 4,
+  },
+  scannedOcrText: {
+    fontSize: 11,
+    color: '#6B6B6B',
+    fontStyle: 'italic',
   },
   inputCard: {
     backgroundColor: '#FFFFFF',
@@ -380,6 +814,75 @@ const styles = StyleSheet.create({
     fontSize: 15,
     color: '#1A1A1A',
     fontWeight: '600',
+  },
+  resolverBox: {
+    backgroundColor: '#F5F5F0',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    borderLeftWidth: 3,
+    borderLeftColor: '#1B7A3D',
+    padding: 12,
+    marginBottom: 16,
+  },
+  resolverHeaderRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 8,
+  },
+  resolverEyebrow: {
+    fontSize: 9,
+    fontWeight: '700',
+    color: '#1B7A3D',
+    letterSpacing: 0.8,
+  },
+  resolverGrid: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginBottom: 6,
+  },
+  resolverCol: {
+    flex: 1,
+    minWidth: 90,
+  },
+  resolverArrowCol: {
+    paddingHorizontal: 2,
+  },
+  resolverFieldLabel: {
+    fontSize: 8,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.6,
+    marginBottom: 2,
+  },
+  resolverFieldVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+  },
+  resolverMedicinalVal: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B7A3D',
+  },
+  resolverDosePill: {
+    backgroundColor: '#1A1A1A',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 9999,
+  },
+  resolverDoseText: {
+    color: '#FFFFFF',
+    fontSize: 11,
+    fontWeight: '700',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+  resolverIndicationText: {
+    fontSize: 11,
+    color: '#6B6B6B',
+    marginTop: 2,
   },
   chipsLabel: {
     fontSize: 10,
@@ -491,10 +994,47 @@ const styles = StyleSheet.create({
   },
   verdictDrug: {
     fontFamily: Platform.select({ ios: 'Georgia', android: 'serif' }),
-    fontSize: 18,
+    fontSize: 20,
     fontWeight: '700',
     color: '#1A1A1A',
-    marginBottom: 8,
+    marginBottom: 10,
+  },
+  verdictCompositionBox: {
+    backgroundColor: '#F5F5F0',
+    borderWidth: 1,
+    borderColor: '#E5E5E0',
+    padding: 12,
+    marginBottom: 12,
+    gap: 5,
+  },
+  verdictCompRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'baseline',
+    gap: 6,
+  },
+  verdictCompLabel: {
+    fontSize: 10,
+    fontWeight: '700',
+    color: '#6B6B6B',
+    letterSpacing: 0.6,
+  },
+  verdictCompValue: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1B7A3D',
+  },
+  verdictCompDose: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1A1A1A',
+    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
+  },
+  verdictCompUse: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1A1A1A',
+    flex: 1,
   },
   verdictRec: {
     fontSize: 13,

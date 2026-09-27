@@ -468,10 +468,13 @@ def check_new_drug(patient_id: str, req: CheckDrugRequest):
     if req.dose < 0:
         raise HTTPException(status_code=400, detail="Dosage amount must be non-negative")
 
+    norm_meta = normalize_drug_name(cleaned_drug)
+    resolved_dose = req.dose if req.dose and req.dose > 0 else float(norm_meta.get("default_dose") or 0)
+
     assessment = checker.assess_new_drug(
         profile=p,
         new_drug_name=cleaned_drug,
-        dose=req.dose,
+        dose=resolved_dose,
         dose_unit=req.dose_unit,
     )
 
@@ -482,6 +485,10 @@ def check_new_drug(patient_id: str, req: CheckDrugRequest):
         "patient_name": p.name,
         "new_drug": assessment.new_drug_raw,
         "normalized_ingredient": assessment.new_drug_normalized,
+        "medicinal_name": norm_meta.get("medicinal_name", assessment.new_drug_normalized.title()),
+        "resolved_dose_mg": resolved_dose,
+        "resolved_dose_unit": req.dose_unit or "mg",
+        "indication": norm_meta.get("indication", "Active Pharmaceutical Ingredient"),
         "safety_status": assessment.overall_safety_status,
         "risk_color": assessment.risk_color,
         "allergy_warnings": assessment.allergy_flags,

@@ -16,11 +16,12 @@ import { Ionicons } from '@expo/vector-icons';
 import { usePatient } from '../context/PatientContext';
 import { API_BASE_URL, setApiBaseUrl } from '../api/client';
 import MotionView from '../components/MotionView';
+import PatientAvatar, { getPatientPersona } from '../components/PatientAvatar';
 import { BklitRingChart } from '../components/BklitChart';
 import Footer from '../components/Footer';
 
 export default function PatientProfileScreen({ navigation }) {
-  const { profile, alerts, refreshPatientData } = usePatient();
+  const { currentPatientId, profile, alerts, refreshPatientData } = usePatient();
   const [serverUrl, setServerUrl] = useState(API_BASE_URL);
   const [editingServer, setEditingServer] = useState(false);
   const [serverError, setServerError] = useState(null);
@@ -42,6 +43,7 @@ export default function PatientProfileScreen({ navigation }) {
 
   const activeAlerts = (alerts || []).filter((a) => !a.is_suppressed);
   const abnormalLabs = (profile?.lab_results || []).filter((l) => l.is_abnormal);
+  const persona = getPatientPersona(currentPatientId || profile?.patient_id, profile?.name);
 
   return (
     <ScrollView
@@ -50,12 +52,21 @@ export default function PatientProfileScreen({ navigation }) {
       showsHorizontalScrollIndicator={false}
       directionalLockEnabled={true}
     >
-      {/* Patient Hero Name */}
+      {/* Patient Hero Name with Distinct Avatar */}
       <MotionView delay={10}>
-        <View style={styles.heroBlock}>
-          <Text style={styles.eyebrow}>ELECTRONIC HEALTH RECORD</Text>
-          <Text style={styles.profileName}>{profile?.name || 'Patient Record'}</Text>
-          <Text style={styles.profileMrn}>MRN: {profile?.patient_id}</Text>
+        <View style={[styles.heroBlock, { flexDirection: 'row', alignItems: 'center', gap: 14 }]}>
+          <PatientAvatar
+            patientId={currentPatientId || profile?.patient_id}
+            fallbackName={profile?.name}
+            size="lg"
+          />
+          <View style={{ flex: 1 }}>
+            <Text style={styles.eyebrow}>
+              ELECTRONIC HEALTH RECORD • {persona.clinicalTag.toUpperCase()}
+            </Text>
+            <Text style={styles.profileName}>{profile?.name || 'Patient Record'}</Text>
+            <Text style={styles.profileMrn}>MRN: {profile?.patient_id}</Text>
+          </View>
         </View>
       </MotionView>
 
