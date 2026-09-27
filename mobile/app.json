@@ -41,7 +41,8 @@
           "cameraPermission": "LADIP needs camera access to capture prescription photos for drug interaction scanning."
         }
       ],
-      "expo-asset"
+      "expo-asset",
+      "expo-secure-store"
     ]
   }
 }

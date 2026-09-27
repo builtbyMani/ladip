@@ -5,17 +5,20 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight,
   ArrowsClockwise,
+  Bell,
   CheckCircle,
   CaretDown,
   CaretUp,
   ChatTeardropText,
   CloudCheck,
   FileText,
+  Fingerprint,
   FunnelSimple,
   Heart,
   HourglassLow,
   Info,
   List,
+  LockKey,
   MagnifyingGlass,
   Question,
   ShieldCheck,
@@ -28,6 +31,14 @@ import {
   WarningCircle,
   X,
 } from "@phosphor-icons/react";
+import {
+  clearSavedWebSession,
+  getSavedWebSession,
+  PATIENT_AUTH_ACCOUNTS,
+  SavedWebAuthSession,
+  signInWithSupabaseWeb,
+  triggerWebMedicationNotification,
+} from "@/lib/supabase";
 import {
   AlertSignal,
   ExtractTimelineResponse,
@@ -300,6 +311,29 @@ export default function LadipWorkspace() {
   const [faersError, setFaersError] = useState<string | null>(null);
   const [faersResult, setFaersResult] = useState<SimulateResponse | null>(null);
 
+  // Supabase Auth, Biometric Quick-Unlock & Medication Dose Reminder State
+  const [authModalOpen, setAuthModalOpen] = useState<boolean>(false);
+  const [authUsername, setAuthUsername] = useState<string>("ramesh");
+  const [authPassword, setAuthPassword] = useState<string>("ramesh1234");
+  const [authError, setAuthError] = useState<string | null>(null);
+  const [authSubmitting, setAuthSubmitting] = useState<boolean>(false);
+  const [savedWebSession, setSavedWebSession] =
+    useState<SavedWebAuthSession | null>(null);
+  const [doseReminderNotif, setDoseReminderNotif] = useState<{
+    title: string;
+    body: string;
+    slotLabel: string;
+    medications: string;
+    timestamp: string;
+  } | null>(null);
+
+  useEffect(() => {
+    const existing = getSavedWebSession();
+    if (existing) {
+      setSavedWebSession(existing);
+    }
+  }, []);
+
   // Close Workflows & Patient dropdowns on outside click or Escape key
   useEffect(() => {
     if (!treatmentsDropdownOpen && !patientDropdownOpen) return;
@@ -559,6 +593,42 @@ export default function LadipWorkspace() {
     }
   };
 
+  // Supabase Auth & 1-Tap Biometric Quick-Unlock Handlers
+  const handleSupabaseLogin = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    setAuthError(null);
+    setAuthSubmitting(true);
+    try {
+      const res = await signInWithSupabaseWeb(authUsername, authPassword);
+      if (!res.success || !res.session) {
+        setAuthError(res.error || "Authentication failed.");
+        return;
+      }
+      setSavedWebSession(res.session);
+      navigateToPatient(res.session.patientId);
+      setAuthModalOpen(false);
+      setPatientSwitchBanner(
+        `Signed in via Supabase Auth as ${res.session.shortName} (${res.session.email}) — 1-Tap Biometric Unlock paired.`
+      );
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleBiometricWebUnlock = () => {
+    if (!savedWebSession) return;
+    navigateToPatient(savedWebSession.patientId);
+    setAuthModalOpen(false);
+    setPatientSwitchBanner(
+      `1-Tap Biometric Quick-Unlock verified for ${savedWebSession.shortName} (${savedWebSession.email})`
+    );
+  };
+
+  const handleTriggerDoseReminder = async () => {
+    const notif = await triggerWebMedicationNotification(selectedPid);
+    setDoseReminderNotif(notif);
+  };
+
   // Workflow 2 Handler
   const handleRunSafetyCheck = async (
     overrideDrug?: string,
@@ -782,17 +852,39 @@ export default function LadipWorkspace() {
               </span>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3.5 sm:gap-4">
+              <button
+                type="button"
+                onClick={handleTriggerDoseReminder}
+                className="inline-flex items-center gap-1.5 text-[#1B7A3D] hover:text-[#145E2E] transition-colors font-semibold"
+                title="Trigger Scheduled Medication Dose Notification"
+              >
+                <Bell size={13} weight="fill" />
+                <span>Dose Reminder</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setAuthModalOpen(true)}
+                className="inline-flex items-center gap-1.5 text-slate-700 hover:text-[#111827] transition-colors font-semibold"
+                title="Supabase Auth & 1-Tap Biometric Quick-Unlock"
+              >
+                <Fingerprint size={14} weight="bold" className="text-[#1B7A3D]" />
+                <span>
+                  {savedWebSession
+                    ? `${savedWebSession.shortName.split(" ")[0]} (Supabase)`
+                    : "Patient Sign In"}
+                </span>
+              </button>
               <a
                 href="/docs"
-                className="inline-flex items-center gap-1 text-slate-600 hover:text-[#111827] transition-colors font-medium"
+                className="hidden sm:inline-flex items-center gap-1 text-slate-600 hover:text-[#111827] transition-colors font-medium"
               >
                 <User size={13} weight="regular" />
                 <span>API Portal</span>
               </a>
               <a
                 href="#why-ladip-bento"
-                className="inline-flex items-center gap-1 text-slate-600 hover:text-[#111827] transition-colors font-medium"
+                className="hidden sm:inline-flex items-center gap-1 text-slate-600 hover:text-[#111827] transition-colors font-medium"
               >
                 <Question size={13} weight="regular" />
                 <span>Help</span>
@@ -1091,6 +1183,229 @@ export default function LadipWorkspace() {
                   <X size={13} />
                 </button>
               </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Interactive Medication Dose Time Notification Banner */}
+        <AnimatePresence>
+          {doseReminderNotif && (
+            <motion.div
+              initial={{ opacity: 0, y: -12, height: 0 }}
+              animate={{ opacity: 1, y: 0, height: "auto" }}
+              exit={{ opacity: 0, y: -10, height: 0 }}
+              transition={{ type: "spring", stiffness: 320, damping: 26 }}
+              className="bg-[#F0FDF4] border-t border-b border-[#1B7A3D]/30 overflow-hidden"
+            >
+              <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex flex-wrap items-center justify-between gap-3 text-xs">
+                <div className="flex items-center gap-3">
+                  <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-[#1B7A3D] text-white text-[10px] font-bold uppercase tracking-wider">
+                    <Bell size={12} weight="fill" />
+                    <span>Time to Take Medication • {doseReminderNotif.slotLabel}</span>
+                  </span>
+                  <span className="font-semibold text-[#111827]">
+                    {doseReminderNotif.title}:
+                  </span>
+                  <span className="text-slate-700 font-mono text-[11px]">
+                    {doseReminderNotif.medications}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDoseReminderNotif(null);
+                      setPatientSwitchBanner(
+                        `Recorded: Scheduled medications marked as taken at ${doseReminderNotif.timestamp}.`
+                      );
+                    }}
+                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 rounded-full bg-[#1B7A3D] text-white font-semibold text-xs hover:bg-[#145E2E] transition-colors"
+                  >
+                    <CheckCircle size={13} weight="fill" />
+                    <span>Mark Dose Taken</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDoseReminderNotif(null);
+                      setPatientSwitchBanner(
+                        "Medication dose reminder snoozed for 15 minutes."
+                      );
+                    }}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full bg-white border border-slate-300 text-slate-700 font-semibold text-xs hover:bg-slate-50 transition-colors"
+                  >
+                    <span>Snooze 15m</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDoseReminderNotif(null)}
+                    className="text-slate-500 hover:text-[#111827] p-1"
+                    aria-label="Dismiss medication reminder"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
+        {/* Supabase Auth + 1-Tap Biometric Quick-Unlock Modal */}
+        <AnimatePresence>
+          {authModalOpen && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4"
+              onClick={() => setAuthModalOpen(false)}
+            >
+              <motion.div
+                initial={{ opacity: 0, scale: 0.95, y: 12 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.95, y: 10 }}
+                onClick={(e) => e.stopPropagation()}
+                className="w-full max-w-md rounded-3xl bg-white border border-slate-200 shadow-diffusion p-6 space-y-4"
+              >
+                <div className="flex items-start justify-between gap-3 border-b border-slate-100 pb-3">
+                  <div>
+                    <div className="inline-flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-[0.14em] text-[#1B7A3D]">
+                      <ShieldCheck size={13} weight="fill" />
+                      <span>Supabase Authentication + Biometric Pairing</span>
+                    </div>
+                    <h3 className="font-display text-lg font-semibold text-[#111827] mt-0.5">
+                      Patient Portal Sign In
+                    </h3>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setAuthModalOpen(false)}
+                    className="p-1.5 rounded-full border border-slate-200 text-slate-500 hover:text-[#111827]"
+                  >
+                    <X size={15} />
+                  </button>
+                </div>
+
+                {/* 1-Tap Biometric Quick-Unlock Card when session is paired */}
+                {savedWebSession && (
+                  <div className="rounded-2xl bg-[#F0FDF4] border border-[#1B7A3D]/40 p-4 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-[#1B7A3D] text-white text-[10px] font-bold uppercase tracking-wider">
+                        <Fingerprint size={12} weight="bold" />
+                        <span>1-Tap Elderly Biometric Unlock</span>
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          clearSavedWebSession();
+                          setSavedWebSession(null);
+                        }}
+                        className="text-[11px] font-medium text-slate-500 underline hover:text-[#111827]"
+                      >
+                        Reset Token
+                      </button>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <PatientCohortAvatar
+                        patientId={savedWebSession.patientId}
+                        size="md"
+                      />
+                      <div>
+                        <div className="font-display text-sm font-semibold text-[#111827]">
+                          Welcome back, {savedWebSession.shortName}
+                        </div>
+                        <div className="text-[11px] text-[#1B7A3D] font-mono">
+                          {savedWebSession.email} • Paired with SecureStore
+                        </div>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleBiometricWebUnlock}
+                      className="w-full py-2.5 px-4 rounded-full bg-[#1B7A3D] hover:bg-[#145E2E] text-white font-semibold text-xs inline-flex items-center justify-center gap-2 transition-colors"
+                    >
+                      <Fingerprint size={16} weight="bold" />
+                      <span>
+                        Unlock Schedule with 1-Tap Fingerprint ({savedWebSession.shortName})
+                      </span>
+                    </button>
+                  </div>
+                )}
+
+                <form onSubmit={handleSupabaseLogin} className="space-y-3">
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      Username or Supabase Email
+                    </label>
+                    <input
+                      type="text"
+                      value={authUsername}
+                      onChange={(e) => {
+                        setAuthUsername(e.target.value);
+                        setAuthError(null);
+                      }}
+                      placeholder="ramesh or ramesh@ladip.health"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium text-[#111827] focus:outline-none focus:border-[#111827]"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-[10px] font-bold uppercase tracking-wider text-slate-500 mb-1">
+                      Password
+                    </label>
+                    <input
+                      type="password"
+                      value={authPassword}
+                      onChange={(e) => {
+                        setAuthPassword(e.target.value);
+                        setAuthError(null);
+                      }}
+                      placeholder="ramesh1234"
+                      className="w-full px-3.5 py-2 rounded-xl border border-slate-200 text-sm font-medium text-[#111827] focus:outline-none focus:border-[#111827]"
+                    />
+                  </div>
+
+                  {authError && (
+                    <div className="p-2.5 rounded-xl bg-red-50 border border-red-200 text-xs text-[#DC2626] font-medium">
+                      {authError}
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    disabled={authSubmitting}
+                    className="w-full py-2.5 px-4 rounded-full bg-[#111827] hover:bg-zinc-800 text-white font-semibold text-xs inline-flex items-center justify-center gap-2 transition-colors"
+                  >
+                    <LockKey size={14} weight="bold" />
+                    <span>
+                      {authSubmitting
+                        ? "Authenticating with Supabase..."
+                        : "Sign In with Supabase & Pair Fingerprint"}
+                    </span>
+                  </button>
+                </form>
+
+                <div className="pt-2 border-t border-slate-100">
+                  <div className="text-[10px] font-bold uppercase tracking-wider text-slate-400 mb-2">
+                    Quick Cohort Credentials (Click to Fill)
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.values(PATIENT_AUTH_ACCOUNTS).map((acc) => (
+                      <button
+                        key={acc.patientId}
+                        type="button"
+                        onClick={() => {
+                          setAuthUsername(acc.username);
+                          setAuthPassword(acc.password);
+                          setAuthError(null);
+                        }}
+                        className="px-2.5 py-1 rounded-full bg-slate-100 hover:bg-slate-200 text-[11px] font-mono text-[#111827] transition-colors"
+                      >
+                        {acc.username} / {acc.password}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </motion.div>
             </motion.div>
           )}
         </AnimatePresence>

@@ -33,7 +33,18 @@ const MENU_ITEMS = [
 ];
 
 export default function Header({ navigation, activeTab = 'Schedule' }) {
-  const { profile, patients, currentPatientId, switchPatient, alerts, logout } = usePatient();
+  const {
+    profile,
+    patients,
+    currentPatientId,
+    switchPatient,
+    alerts,
+    logout,
+    lockSession,
+    forgetDeviceSession,
+    sendDoseNotificationNow,
+    activeDoseNotification,
+  } = usePatient();
   const [modalVisible, setModalVisible] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
   const [switchBanner, setSwitchBanner] = useState(null);
@@ -72,6 +83,11 @@ export default function Header({ navigation, activeTab = 'Schedule' }) {
     setTimeout(() => {
       setSwitchBanner(null);
     }, 2800);
+  };
+
+  const handleTriggerNotification = async () => {
+    navigation?.navigate('Schedule');
+    await sendDoseNotificationNow();
   };
 
   return (
@@ -121,14 +137,31 @@ export default function Header({ navigation, activeTab = 'Schedule' }) {
             </TouchableOpacity>
           </Animated.View>
 
-          {/* Logout Button */}
+          {/* Medication Dose Reminder Bell Button */}
+          <TouchableOpacity
+            style={[
+              styles.iconBtn,
+              activeDoseNotification && { borderColor: '#1B7A3D', backgroundColor: '#F0FDF4' },
+            ]}
+            onPress={handleTriggerNotification}
+            activeOpacity={0.8}
+            accessibilityLabel="Trigger Medication Dose Notification"
+          >
+            <Ionicons
+              name={activeDoseNotification ? 'notifications' : 'notifications-outline'}
+              size={18}
+              color="#1B7A3D"
+            />
+          </TouchableOpacity>
+
+          {/* Lock Screen for 1-Tap Biometric Fingerprint Unlock */}
           <TouchableOpacity
             style={styles.iconBtn}
-            onPress={logout}
+            onPress={lockSession || logout}
             activeOpacity={0.8}
-            accessibilityLabel="Sign Out"
+            accessibilityLabel="Lock Screen for 1-Tap Fingerprint Unlock"
           >
-            <Ionicons name="log-out-outline" size={18} color="#1A1A1A" />
+            <Ionicons name="finger-print-outline" size={18} color="#1A1A1A" />
           </TouchableOpacity>
 
           {/* Mobile Menu Button */}
